@@ -401,9 +401,17 @@ function Try-Count($entity) {
   try {
     $x = "<fetch aggregate='true'><entity name='$($entity.ToLower())'><attribute name='$((EntMeta $entity $EF::Entity).PrimaryIdAttribute)' aggregate='count' alias='c'/></entity></fetch>"
     $r = Fetch $x | Select-Object -First 1
-    if ($r) { return "$($r['c'])" }
+    if ($r) { return "$(AggValue $r 'c')" }
     return 'unknown'
   } catch { return 'unknown (too many rows to count, or no read access)' }
+}
+
+# An aggregate column comes back as an AliasedValue, so printing the attribute directly gives
+# "Microsoft.Xrm.Sdk.AliasedValue" instead of the number.
+function AggValue($row, $alias) {
+  $v = $row[$alias]
+  if ($v -and $v.PSObject.Properties.Name -contains 'Value') { return $v.Value }
+  return $v
 }
 
 function Try-CountFilled($entity, $attribute) {
@@ -412,7 +420,7 @@ function Try-CountFilled($entity, $attribute) {
     $x = "<fetch aggregate='true'><entity name='$($entity.ToLower())'><attribute name='$pk' aggregate='count' alias='c'/>" +
          "<filter><condition attribute='$($attribute.ToLower())' operator='not-null'/></filter></entity></fetch>"
     $r = Fetch $x | Select-Object -First 1
-    if ($r) { return "$($r['c'])" }
+    if ($r) { return "$(AggValue $r 'c')" }
     return 'unknown'
   } catch { return 'unknown (too many rows to count, or no read access)' }
 }

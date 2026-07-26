@@ -5,6 +5,14 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.0.1
+
+### Fixed
+
+- Row counts in delete confirmations printed `Microsoft.Xrm.Sdk.AliasedValue` instead of the number.
+  An aggregate column comes back from `RetrieveMultiple` as an `AliasedValue` wrapper, so the banner
+  for `delete-table` / `delete-column` - the one place the count matters most - was unreadable.
+
 ## 2.0.0 — Dynamics365OnPremiseAI
 
 Renamed, and made safe enough to hand to a developer who has never seen it. The toolkit now explains
