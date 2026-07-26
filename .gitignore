@@ -1,0 +1,16 @@
+# Dependencies - installed per machine, never committed
+node_modules/
+
+# UI test output: screenshots and JSON contain real organisation data and user names
+uitest/out/
+uitest/out-*/
+uitest/probe-*/
+uitest/uitest-out/
+
+# Scratch / backups
+*.bak
+*.tmp
+~$*
+
+# Never commit anything from the credential + backup store
+.dataverse/

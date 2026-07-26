@@ -1,0 +1,18 @@
+{
+  "name": "Dynamics365OnPremiseAI",
+  "owner": {
+    "name": "Keumars Vahdanifar",
+    "url": "https://github.com/KeumarsVahdanifar/Dynamics365OnPremiseAI"
+  },
+  "metadata": {
+    "description": "Dynamics 365 On-Premise AI Toolkit for Claude Code - safe, gated automation of a live Dynamics 365 CE on-premises organisation.",
+    "version": "2.0.0"
+  },
+  "plugins": [
+    {
+      "name": "Dynamics365OnPremiseAI",
+      "source": ".",
+      "description": "Dynamics 365 On-Premise AI Toolkit - schema, data and customization for Dynamics 365 CE on-premises (IFD/ADFS), with descriptive write confirmations, automatic local backups with restore, and a real-browser UI test runner."
+    }
+  ]
+}

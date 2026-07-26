@@ -1,0 +1,11 @@
+<fetch top="5">
+  <entity name="contact">
+    <attribute name="fullname" />
+    <attribute name="emailaddress1" />
+    <attribute name="telephone1" />
+    <order attribute="fullname" />
+    <filter type="and">
+      <condition attribute="statecode" operator="eq" value="0" />
+    </filter>
+  </entity>
+</fetch>

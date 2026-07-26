@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "Dynamics365OnPremiseAI": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["./mcp/server.js"],
+      "env": {}
+    }
+  }
+}
