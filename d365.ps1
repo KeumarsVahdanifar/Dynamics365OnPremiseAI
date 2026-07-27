@@ -223,7 +223,7 @@ function Save-Backup($kind, $name, $payload, $restoreHint, $meta) {
       state       = $payload
     }
     # Identity as data, never encoded in the file name: an entity logical name contains
-    # underscores itself (op_notification), so splitting the name on '_' picks the wrong entity.
+    # underscores itself (abc_thing), so splitting the name on '_' picks the wrong entity.
     if ($meta) { foreach ($k in $meta.Keys) { $doc[$k] = $meta[$k] } }
     ($doc | ConvertTo-Json -Depth 20) | Set-Content -Path $file -Encoding UTF8
     New-Item -ItemType Directory -Force -Path $backupRoot | Out-Null
@@ -1123,7 +1123,7 @@ switch ($Command) {
   # ================= METADATA WRITE (customization - all require -Yes) =================
 
   'create-table' {
-    if (-not $Arg1) { throw "usage: create-table <SchemaName op_x> -Data '{`"displayName`":`"..`",`"pluralName`":`"..`",`"primaryName`":`"op_name`",`"primaryDisplay`":`"Name`",`"ownership`":`"UserOwned|OrganizationOwned`",`"description`":`"..`",`"hasNotes`":true,`"hasActivities`":false}' -Yes" }
+    if (-not $Arg1) { throw "usage: create-table <SchemaName abc_x> -Data '{`"displayName`":`"..`",`"pluralName`":`"..`",`"primaryName`":`"abc_name`",`"primaryDisplay`":`"Name`",`"ownership`":`"UserOwned|OrganizationOwned`",`"description`":`"..`",`"hasNotes`":true,`"hasActivities`":false}' -Yes" }
     $spec  = if ($Data) { $Data | ConvertFrom-Json } else { $null }
     $dn    = P $spec 'displayName' $Arg1
     $pl    = P $spec 'pluralName' ("$dn" + 's')
@@ -1201,7 +1201,7 @@ switch ($Command) {
   }
 
   'create-column' {
-    if (-not $Arg1 -or -not $Arg2 -or -not $Data) { throw "usage: create-column <entity> <SchemaName op_x> -Data '{`"type`":`"string|memo|integer|bigint|decimal|double|money|boolean|datetime|date|picklist|multiselect`",`"displayName`":`"..`",`"required`":`"None|Recommended|Required`",...}' -Yes" }
+    if (-not $Arg1 -or -not $Arg2 -or -not $Data) { throw "usage: create-column <entity> <SchemaName abc_x> -Data '{`"type`":`"string|memo|integer|bigint|decimal|double|money|boolean|datetime|date|picklist|multiselect`",`"displayName`":`"..`",`"required`":`"None|Recommended|Required`",...}' -Yes" }
     $spec = $Data | ConvertFrom-Json
     $attr = New-Attr $Arg2 $spec
     $req = New-Object Microsoft.Xrm.Sdk.Messages.CreateAttributeRequest
@@ -1251,7 +1251,7 @@ switch ($Command) {
   }
 
   'create-lookup' {
-    if (-not $Data) { throw "usage: create-lookup -Data '{`"referenced`":`"account`",`"referencing`":`"op_child`",`"lookupSchema`":`"op_AccountId`",`"lookupDisplay`":`"Account`",`"relationshipSchema`":`"op_account_op_child`",`"required`":`"None`",`"behavior`":`"referential|parental`"}' -Yes" }
+    if (-not $Data) { throw "usage: create-lookup -Data '{`"referenced`":`"account`",`"referencing`":`"abc_child`",`"lookupSchema`":`"abc_AccountId`",`"lookupDisplay`":`"Account`",`"relationshipSchema`":`"abc_account_abc_child`",`"required`":`"None`",`"behavior`":`"referential|parental`"}' -Yes" }
     $spec = $Data | ConvertFrom-Json
     $rel = New-Object Microsoft.Xrm.Sdk.Metadata.OneToManyRelationshipMetadata
     $rel.ReferencedEntity     = "$(P $spec 'referenced' $null)".ToLower()
@@ -1315,7 +1315,7 @@ switch ($Command) {
   }
 
   'create-global-optionset' {
-    if (-not $Arg1 -or -not $Data) { throw "usage: create-global-optionset <SchemaName op_x> -Data '{`"displayName`":`"..`",`"options`":[{`"value`":1,`"label`":`"A`"}]}' -Yes" }
+    if (-not $Arg1 -or -not $Data) { throw "usage: create-global-optionset <SchemaName abc_x> -Data '{`"displayName`":`"..`",`"options`":[{`"value`":1,`"label`":`"A`"}]}' -Yes" }
     $spec = $Data | ConvertFrom-Json
     $os = New-Object Microsoft.Xrm.Sdk.Metadata.OptionSetMetadata
     $os.Name=$Arg1.ToLower(); $os.DisplayName=Lbl (P $spec 'displayName' $Arg1); $os.IsGlobal=$true
@@ -1339,7 +1339,7 @@ switch ($Command) {
   }
 
   'insert-option' {
-    if (-not $Data) { throw "usage: insert-option -Data '{`"entity`":`"op_x`",`"attribute`":`"op_y`",`"label`":`"New`",`"value`":100}'  OR  '{`"global`":`"op_set`",`"label`":`"New`",`"value`":100}' -Yes" }
+    if (-not $Data) { throw "usage: insert-option -Data '{`"entity`":`"abc_x`",`"attribute`":`"abc_y`",`"label`":`"New`",`"value`":100}'  OR  '{`"global`":`"abc_set`",`"label`":`"New`",`"value`":100}' -Yes" }
     $spec = $Data | ConvertFrom-Json
     $req = New-Object Microsoft.Xrm.Sdk.Messages.InsertOptionValueRequest
     $g = P $spec 'global' $null
@@ -1399,7 +1399,7 @@ switch ($Command) {
   }
 
   'create-key' {
-    if (-not $Arg1 -or -not $Arg2 -or -not $Data) { throw "usage: create-key <entity> <SchemaName op_x> -Data '{`"displayName`":`"..`",`"attributes`":[`"op_code`"]}' -Yes" }
+    if (-not $Arg1 -or -not $Arg2 -or -not $Data) { throw "usage: create-key <entity> <SchemaName abc_x> -Data '{`"displayName`":`"..`",`"attributes`":[`"abc_code`"]}' -Yes" }
     $spec = $Data | ConvertFrom-Json
     $key = New-Object Microsoft.Xrm.Sdk.Metadata.EntityKeyMetadata
     $key.SchemaName=$Arg2; $key.DisplayName=Lbl (P $spec 'displayName' $Arg2)
@@ -1612,7 +1612,7 @@ switch ($Command) {
   }
 
   { $_ -in 'create-webresource','update-webresource' } {
-    if (-not $Arg1 -or -not $Arg2) { throw "usage: $Command <name op_/x/y.js> <localfile> [-Data '{`"displayName`":`"..`",`"description`":`"..`",`"type`":`"js`"}'] [-Solution <uniquename>] -Yes" }
+    if (-not $Arg1 -or -not $Arg2) { throw "usage: $Command <name abc_/x/y.js> <localfile> [-Data '{`"displayName`":`"..`",`"description`":`"..`",`"type`":`"js`"}'] [-Solution <uniquename>] -Yes" }
     if (-not (Test-Path $Arg2)) { throw "file not found: $Arg2" }
     $spec = if ($Data) { $Data | ConvertFrom-Json } else { $null }
     $tmap = @{ html=1; htm=1; css=2; js=3; xml=4; png=5; jpg=6; jpeg=6; gif=7; xap=8; xsl=9; xslt=9; ico=10; svg=11; resx=12 }

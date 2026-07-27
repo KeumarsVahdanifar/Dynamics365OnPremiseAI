@@ -26,16 +26,16 @@ support (`-Channel msedge` for Edge).
 ```powershell
 # Unified Interface, with a specific app
 powershell -ExecutionPolicy Bypass -File .\uitest\d365-uitest.ps1 `
-    -Check checks\notifications.js -App <appid>
+    -Check checks\ribbon-badge.js -App <appid>
 
 # classic web client
-powershell -ExecutionPolicy Bypass -File .\uitest\d365-uitest.ps1 -Check checks\notifications.js -Classic
+powershell -ExecutionPolicy Bypass -File .\uitest\d365-uitest.ps1 -Check checks\ribbon-badge.js -Classic
 
 # just open a page and report console errors / screenshots
 powershell -ExecutionPolicy Bypass -File .\uitest\d365-uitest.ps1 -Goto "main.aspx?etn=account&pagetype=entitylist"
 
 # watch it happen
-... -Check checks\notifications.js -Headed -KeepOpen
+... -Check checks\ribbon-badge.js -Headed -KeepOpen
 ```
 
 Options: `-Check <file>` `-App <appid>` `-Classic` `-Goto <relative-url>` `-Out <dir>`
@@ -91,7 +91,7 @@ Two modules ship with the plugin:
 - **`checks/probe-header.js`** — dumps the shell's top-bar DOM (ids, `data-id`s, rectangles, likely
   containers). Run this *before* writing selectors that touch the application header; it is how the
   header anchors for both shells were established instead of guessed.
-- **`checks/notifications.js`** — a worked example: one bell, a numeric badge (Persian digits
+- **`checks/ribbon-badge.js`** — a worked example: one bell, a numeric badge (Persian digits
   normalised), the dropdown opening, mark-as-read decrementing the count, the centre page listing
   rows, plus frame probes and a trace dump when something fails.
 

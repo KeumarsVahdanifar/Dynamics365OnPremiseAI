@@ -115,7 +115,7 @@ server.registerTool('d365_read', {
     description: 'Runs a read-only toolkit command. Changes nothing. Commands: ' + READ_COMMANDS.join(', ') +
                  '. Examples: {command:"attrs", args:["account"]}, ' +
                  '{command:"fetch", args:["<fetch>...</fetch>"], top:50}, ' +
-                 '{command:"optionsets", args:["op_notification"]}. ' +
+                 '{command:"optionsets", args:["abc_thing"]}. ' +
                  'Confirm logical names, types and option values with this before writing anything ' +
                  'that depends on them.',
     inputSchema: {
@@ -246,7 +246,7 @@ server.registerTool('d365_uitest', {
                  'it after any change a user is meant to SEE - the SDK cannot tell you whether a ' +
                  'ribbon button drew, a script threw, or a web resource 404d. Check modules live in ' +
                  'uitest/checks (smoke.js, probe-header.js, record-form.js, view-grid.js, ' +
-                 'notifications.js).',
+                 'ribbon-badge.js).',
     inputSchema: {
         check: z.string().optional().describe('Check module, e.g. checks/smoke.js'),
         app: z.string().optional().describe('Unified Interface app id (appid)'),

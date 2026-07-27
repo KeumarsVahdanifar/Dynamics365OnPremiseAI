@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Dynamics 365 On-Premise AI Toolkit for Claude Code - safe, gated automation of a live Dynamics 365 CE on-premises organisation.",
-    "version": "2.0.1"
+    "version": "2.1.0"
   },
   "plugins": [
     {

@@ -93,8 +93,8 @@ Four things to check every time, in this order:
     backups.jsonl                     one line per capture: time, org, kind, target, file, command
     2026-07-26\
         162852_record_account_<id>.json          record: every readable column
-        163104_webresource_op_..._script.js.json  web resource: content, plus the decoded file
-        163210_metadata_op_notification.json     schema snapshot (documentation, not an undo)
+        163104_webresource_abc_..._script.js.json web resource: content, plus the decoded file
+        163210_metadata_abc_thing.json           schema snapshot (documentation, not an undo)
         163255_solution_MySolution.zip           the org's own export, before an import
 ```
 

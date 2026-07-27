@@ -7,7 +7,7 @@
 
   USAGE
       powershell -ExecutionPolicy Bypass -File .\uitest\d365-uitest.ps1 `
-          [-Check checks\notifications.js] [-App <appid>] [-Classic] [-Goto <relative-url>] `
+          [-Check checks\ribbon-badge.js] [-App <appid>] [-Classic] [-Goto <relative-url>] `
           [-Headed] [-Out <dir>] [-Settle <ms>]
 
   Requires (one-time):

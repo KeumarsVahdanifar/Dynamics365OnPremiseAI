@@ -1,6 +1,6 @@
 {
   "name": "Dynamics365OnPremiseAI",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "Dynamics 365 On-Premise AI Toolkit - work on a live Dynamics 365 Customer Engagement on-premises organisation (IFD/ADFS) from Claude Code: read schema, option sets, relationships, keys, FetchXML and records; read the merged application/entity ribbon; and make gated changes - records, tables (including activity tables), columns, choices, relationships, keys, web resources, solution import/export and publish. Every write shows exactly what changes where and is backed up locally first, with a restore command to undo it. Includes a Playwright UI test runner that drives the org in a real installed browser to verify what users actually see. Session-gated, self-contained (CRM SDK DLLs bundled).",
   "author": {
     "name": "Keumars Vahdanifar",

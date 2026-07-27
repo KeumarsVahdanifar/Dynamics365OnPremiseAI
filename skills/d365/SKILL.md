@@ -109,8 +109,7 @@ Passing JSON: run the tool **via Bash** (`Bash(powershell*)`), not a PowerShell 
   `HasNotes`, offline availability, and the primary attribute must be `Subject`.
 - **UI claims need a browser.** dvxrm proves the server is right, not that anything renders. To check
   what a user actually sees, use `uitest/` (see [docs/UI-TESTING.md](../../docs/UI-TESTING.md)):
-  `uitest\d365-uitest.ps1 -Check checks
-otifications.js [-App <appid>|-Classic]`. It drives an
+  `uitest\d365-uitest.ps1 -Check checksibbon-badge.js [-App <appid>|-Classic]`. It drives an
   installed Chrome, dismisses first-run dialogs, and reports console errors, failed requests and
   screenshots.
 - **`-Top` defaults to 50 and nothing pages.** A result of exactly 50 rows usually means truncation, not

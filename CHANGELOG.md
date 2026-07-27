@@ -5,6 +5,34 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.1.0
+
+### Added
+
+Field notes only — no tool behaviour changed. Everything below was hit while using the MCP tools
+against a live org and cost time to work out.
+
+- **`groupby` aggregates are truncated by `-Top` like any other result set**
+  ([FIELD-NOTES §2](docs/FIELD-NOTES.md)). A `count` + `groupby` reads like a summary, so a 50-row
+  answer looks complete. Grouping a column with hundreds of distinct values returned exactly 50 groups.
+  Exactly 50 means truncated — do not draw conclusions about maxima or outliers from it.
+- **A grouped value's JSON shape depends on the attribute type** (§3b). State/Status arrive wrapped as
+  `{ "Value": 1 }`, Booleans arrive bare as `true`, Lookups as an entity reference. A parser that
+  assumes one shape breaks on the others; `<alias>@display` is there when only the label is needed.
+- **FetchXML cannot compare one attribute to another** (§3c). Conditions compare an attribute to a
+  literal, full stop. "End date before start date" needs SQL against the base table or a client-side
+  pass — there is no operator, so stop looking for one.
+- **How to prove a column is dead rather than just labelled that way** (§3d). A `- Deleted` suffix in a
+  display name is a convention, not proof. Check rows populated, then rows populated among recent
+  records, *plus a control for how many recent records exist at all* — the control is the step people
+  skip, and without it a zero is meaningless.
+- **New §23 on the MCP tools themselves**: repointing the org with
+  `d365_read { command: "config", args: ["-Url", …] }` requires a fresh `d365_init`, because the arm
+  marker is tied to the org and login current when it was set; `filter` applies to `query` only and is
+  silently ignored by `attrs`; large reads are persisted to `tool-results/*.json` where the file itself
+  is truncated around 60 KB mid-token, so `json.load` fails and the text needs regex or a narrower
+  query; and non-ASCII display names need `PYTHONIOENCODING=utf-8` when piping through a script.
+
 ## 2.0.1
 
 ### Fixed
@@ -57,7 +85,7 @@ back, and can verify in a real browser that a user sees the result. Also exposed
   `probe-header.js` (dump the shell's header DOM before writing selectors for it),
   `record-form.js` (open a form and report controls, tabs, required fields, dirty-on-load),
   `view-grid.js` (open a list and report headers and row counts),
-  `notifications.js` (a full worked example).
+  `ribbon-badge.js` (a full worked example).
 - Runner improvements: console errors now carry the **URL** from the message location, every 4xx/5xx
   response is reported with its URL, first-run dialogs are dismissed **across all frames** (the
   "Explore Dynamics 365" tour is an iframe with a full-page backdrop that silently eats every click),
@@ -114,7 +142,7 @@ folded back everything the tool could not do, plus a way to verify what the brow
   installed Chrome or Edge against the org via Playwright, signs in with the cached DPAPI credential,
   dismisses first-run dialogs across all frames, and reports console errors (with URLs), failed
   requests, screenshots and your own assertions as JSON. Ships with `checks/probe-header.js` (dump the
-  shell's header DOM before writing selectors for it) and `checks/notifications.js` (a worked example).
+  shell's header DOM before writing selectors for it) and `checks/ribbon-badge.js` (a worked example).
 
 ### Fixed
 

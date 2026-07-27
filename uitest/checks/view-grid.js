@@ -6,7 +6,7 @@
  * server will not tell you.
  *
  *   d365-uitest.ps1 -Check checks\view-grid.js -App <appid> `
- *       -Goto "main.aspx?appid=<appid>&pagetype=entitylist&etn=op_notification"
+ *       -Goto "main.aspx?appid=<appid>&pagetype=entitylist&etn=account"
  *
  * Optional environment inputs:
  *   UITEST_EXPECT_ROWS      minimum number of rows expected (default 0)

@@ -63,6 +63,24 @@ choices mangled. Fix both.
 | `-Top` default | **50** | `fetch`, `query`. Easy to mistake for "that's all the data". |
 | Single `RetrieveMultiple` page | **5000** | Server-side hard cap. `-Top 10000` does **not** get you 10000. |
 | Aggregate (`count`) | 50,000 records | Beyond that CRM **fails the query** — it does not return a partial number. |
+| Aggregate with `groupby` | **`-Top` applies** | The *group* rows are truncated like any other result set. |
+
+### `groupby` results are truncated by `-Top` too
+
+A `count` + `groupby` aggregate looks like a summary, so it is tempting to read it as the whole
+distribution. It is not — it is a result set, and the same 50-row default applies to the groups:
+
+```
+fetch '<fetch aggregate="true"><entity name="contact">
+         <attribute name="contactid" aggregate="count" alias="cnt"/>
+         <attribute name="ownerid" alias="o" groupby="true"/>
+       </entity></fetch>'
+```
+
+Verified: an entity with several hundred distinct values in the grouped column returned exactly 50
+group rows. Exactly 50 groups means truncated, not "there are 50 groups" — pass `-Top` above the
+expected number of distinct values before drawing any conclusion about a distribution, maxima or
+outliers. Grouping on a low-cardinality column (a `statecode`, a Boolean) is safe by construction.
 
 ### `count` fails outright on large tables
 
@@ -114,13 +132,78 @@ A column that is null is **absent from the response**, not present-and-null. So 
 not mean the column is missing from the entity:
 
 ```
-$ retrieve md_salebasket <id> -Columns md_syncstatus,op_ismain
-{ "op_ismain": false, "md_salebasketid": "..." }        # md_syncstatus is null
+$ retrieve abc_basket <id> -Columns abc_syncstatus,abc_ismain
+{ "abc_ismain": false, "abc_basketid": "..." }          # abc_syncstatus is null
 ```
 
 Check with `-contains` on the property names, not `-eq $null` on a property you assume exists. Same in
 C#: use `entity.Contains("x")` or `GetAttributeValue<T>` (which returns `default(T)`), never
 `entity["x"]` on a possibly-null column — that throws `KeyNotFoundException`.
+
+---
+
+## 3b. A grouped value's JSON shape depends on the attribute type
+
+`groupby` does not hand back a scalar for every attribute type, so a parser that assumes one breaks on
+half of them. Verified in the same query shape against one org:
+
+```
+statecode  (State)   ->  "sc": { "Value": 1, "ExtensionData": {} }   plus  "sc@display": "Inactive"
+abc_flag   (Boolean) ->  "flag": true                               plus  "flag@display": "Yes"
+abc_owner  (Lookup)  ->  "o": { "Id": "...", "LogicalName": "systemuser", "Name": "..." }
+```
+
+State/Status come back wrapped (the SDK's `OptionSetValue`), Booleans come back bare, Lookups come back
+as an entity reference. Read `<alias>.Value` for choice-like columns and `<alias>` directly for
+Booleans, or just read the `<alias>@display` string the tool adds when you only need it for output.
+Aggregate columns are also `AliasedValue`-wrapped on the SDK side — see the 2.0.1 entry in
+[CHANGELOG.md](../CHANGELOG.md) for the bug that caused.
+
+---
+
+## 3c. FetchXML cannot compare one attribute to another
+
+Every `<condition>` compares an attribute to a **literal**. There is no operator for "this column
+versus that column", so a data-quality question like *which rows have an end date before their start
+date* is not expressible:
+
+```
+<!-- no such thing -->
+<condition attribute='abc_enddate' operator='lt' valueof='abc_startdate'/>
+```
+
+Options, in order of preference: query the base table in SQL (`abc_thingBase`) where a normal `WHERE
+a < b` works; or pull the two columns and compare client-side, paging if the table is large. Do not
+waste time hunting for a FetchXML operator — there isn't one.
+
+---
+
+## 3d. Proving a column is genuinely dead, not just labelled that way
+
+A display name ending in something like `- Deleted` is a **convention some orgs use** to retire a
+column without deleting it (deleting breaks forms, views and dependencies). It is a hint, never proof —
+the column may still be read by plugins or carry data you must preserve.
+
+Confirm with two counts plus a control:
+
+```
+# 1. does it hold data at all?
+<filter><condition attribute='abc_thing' operator='not-null'/></filter>
+
+# 2. is anything still writing to it?
+<filter><condition attribute='abc_thing' operator='not-null'/>
+        <condition attribute='createdon' operator='last-x-years' value='1'/></filter>
+
+# 3. the control - without this, a zero in step 2 means nothing
+<filter><condition attribute='createdon' operator='last-x-years' value='1'/></filter>
+```
+
+Verified pattern on one org: ~3,500 of ~4,400 rows populated, but **0** of the 618 records created in
+the last year populated it — dead in practice, with a large legacy tail. Step 3 is the one people skip;
+a zero in step 2 is meaningless if the table simply had no new rows.
+
+Also look for the live replacement next to it — retired columns often sit beside a successor with a
+corrected name or a better type (a `Picklist` replaced by a `Lookup`, or a spelling fix).
 
 ---
 
@@ -172,7 +255,7 @@ columns first, verify, migrate data, then delete the old ones — in that order,
 
 `d365.ps1` warns when a new schema name does not match your configured prefix
 (`login -Prefix abc_` / `config -Prefix abc_`). That warning is **advice, not a block** — CRM accepts
-any prefix that an existing publisher owns. Creating `md_x` in an org whose configured prefix is `op_`
+any prefix that an existing publisher owns. Creating `xyz_x` in an org whose configured prefix is `abc_`
 works fine if a publisher owns `md_`. The tool prints a NOTE and proceeds.
 
 Verify with the org's publishers if you are unsure; a wrong prefix is only discoverable after CRM
@@ -443,7 +526,7 @@ real - if you do not want it seen, hide it from your own script after it has loa
 A web resource URL is **not** `/<org>/WebResources/...`. The platform inserts a cache-busting segment:
 
 ```
-/<org>/%7b639206587280000005%7d/webresources/op_/notifications/page.html
+/<org>/%7b639206587280000005%7d/webresources/abc_/myfeature/page.html
 ```
 
 Consequences:
@@ -524,3 +607,55 @@ guessing is expensive. `uitest/` drives a real browser against the org - see
 Two lessons worth keeping: **never swallow a click error** in a test - an intercepted click looks
 exactly like a broken feature - and put a **trace ring buffer on `window.top`** in the code under
 test so the runner can read back what actually ran.
+
+---
+
+## 23. Using the MCP tools (`d365_init` / `d365_read` / …)
+
+### Switching org mid-session
+
+`d365_read` accepts the `config` command with positional args, so the org can be repointed without
+leaving the session — then **`d365_init` must be run again**, because the arm marker is tied to the
+login and org that were current when it was set:
+
+```
+d365_read  { command: "config", args: ["-Url", "https://<host>/<Org>"] }
+d365_init  { session: "<session id>" }
+```
+
+`config` with no args just prints the current URL and prefix. Always relay the org banner `d365_init`
+prints afterwards — it is easy to run a long read against the wrong org and not notice, especially
+where orgs are named `Test` / `Development` on the same host.
+
+### `filter` only applies to `query`
+
+`d365_read`'s `filter` parameter is for the `query` command. Passing it alongside `attrs` is silently
+ignored — the full attribute list comes back regardless:
+
+```
+# filter is ignored here; returns all ~216 attributes of systemuser
+d365_read { command: "attrs", args: ["systemuser"], filter: "abc_somecolumn" }
+```
+
+Narrow the entity, or grep the result. There is no server-side attribute filter for `attrs`.
+
+### Big reads get persisted to a file, and the preview is truncated
+
+A large result (a wide entity's `attrs`, for instance) is written to a `tool-results/*.json` file with
+only the first couple of KB shown inline. Two things follow:
+
+- The **persisted file is itself truncated** around 60 KB, mid-token. `json.load` on it fails with
+  `Expecting property name enclosed in double quotes`. Regex the raw text for what you need instead of
+  parsing it as JSON, or ask a narrower question in the first place.
+- The text is stored as a JSON string inside a wrapper array (`[{ "type": "text", "text": "…" }]`), so
+  the CRM payload needs a second decode step even when it is complete.
+
+Prefer several narrow reads over one wide one — `attrs` on a 216-attribute system table is the case
+that bites.
+
+### Non-ASCII output and console encoding
+
+Display names are frequently non-ASCII (see §21). Piping tool output through a script that prints to a
+Windows console will die with `UnicodeEncodeError: 'charmap' codec can't encode characters`. Set
+`PYTHONIOENCODING=utf-8` (or the equivalent) rather than stripping the characters — the label is often
+the only way to tell two similarly-named columns apart.
