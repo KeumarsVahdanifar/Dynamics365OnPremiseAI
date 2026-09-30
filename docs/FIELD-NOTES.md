@@ -659,3 +659,64 @@ Display names are frequently non-ASCII (see §21). Piping tool output through a 
 Windows console will die with `UnicodeEncodeError: 'charmap' codec can't encode characters`. Set
 `PYTHONIOENCODING=utf-8` (or the equivalent) rather than stripping the characters — the label is often
 the only way to tell two similarly-named columns apart.
+
+---
+
+## 24. `d365.ps1` cannot log in, but the browser can
+
+Symptom: every CLI and MCP command fails with `Connect failed: Unable to Login to Dynamics CRM`, retries
+never recover, and a Tooling trace shows only
+
+```
+DiscoverOrganizations - proxy requiring authentication type : Federation
+The authentication endpoint Kerberos was not found on the configured Secure Token Service!
+```
+
+The Kerberos line is the fail-over attempt, not the cause. The username attempt before it fails without
+logging anything.
+
+Test the cached credential with the UI runner before anything else:
+
+```
+uitest\d365-uitest.ps1 -Goto "api/data/v9.1/WhoAmI"
+```
+
+If the screenshot shows the `WhoAmI` JSON, the credential is fine and the SDK's sign-in route is what
+broke. Seen when an organisation's web sign-in was moved to a different identity provider: the browser
+followed the new sign-in page with the same username and password, while `CrmServiceClient`
+(`AuthType=IFD`, which `d365.ps1` and the Plugin Registration Tool both use) stopped getting in. The
+report's `consoleErrors` and failed requests name the host the browser signed in at. More retries only
+add failed sign-ins against the account, so stop after a few.
+
+Until the SDK route works again, the Web API through the runner's signed-in page is a working write
+path. A check module calls it with `fetch` inside `page.evaluate`:
+
+```javascript
+const res = await fetch(cfg.url + '/api/data/v9.1/' + entitySet, {
+    method: 'POST', credentials: 'include',
+    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json; charset=utf-8',
+               'OData-MaxVersion': '4.0', 'OData-Version': '4.0',
+               'MSCRM.SolutionUniqueName': 'MySolution' },   // created straight into this unmanaged solution
+    body: JSON.stringify(record)
+});
+```
+
+Verified on 9.1 on-premises by registering a plug-in end to end this way:
+
+- `pluginassemblies` takes `content` (the DLL as base64), `isolationmode`, `sourcetype`, `version`,
+  `culture` and `publickeytoken`. A `plugintypes` row binds with `pluginassemblyid@odata.bind`.
+- A step binds its plug-in type through `eventhandler_plugintype@odata.bind` (the polymorphic
+  `eventhandler` has one navigation property per target), its message and filter through
+  `sdkmessageid@odata.bind` / `sdkmessagefilterid@odata.bind`, and its secure configuration through
+  `sdkmessageprocessingstepsecureconfigid@odata.bind` to a row POSTed to
+  `sdkmessageprocessingstepsecureconfigs` first.
+- `MSCRM.SolutionUniqueName` on the assembly and step POSTs is honoured: `solutioncomponents` listed
+  types 91 and 92 with no separate `AddSolutionComponent` call.
+- Primary keys can be supplied in the body, so every id is known before the first write.
+- Look navigation property names up in `EntityDefinitions(LogicalName='x')/ManyToOneRelationships`
+  instead of guessing them.
+
+This path has none of `d365.ps1`'s safety net - no confirmation banner, no backup. Give the module a
+read-only mode that runs the same lookups and prints what it would create, show that first, and keep the
+ids of everything created so it can be deleted again. The `cfg` a check module receives carries the
+password: never return or log it.

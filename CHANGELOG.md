@@ -5,6 +5,17 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.1.1
+
+### Documentation
+
+- **`d365.ps1` cannot log in but the browser can** ([FIELD-NOTES §24](docs/FIELD-NOTES.md)). After an
+  organisation's sign-in moved to another identity provider, every CLI and MCP command failed with
+  `Unable to Login` while the UI runner still signed in with the same cached credential. The note shows
+  how to tell the two apart in one command (`-Goto api/data/v9.1/WhoAmI`), why retrying does not help,
+  and how to keep working through the Web API from a check module - down to registering a plug-in
+  assembly, type, secure configuration and step straight into a solution with `MSCRM.SolutionUniqueName`.
+
 ## 2.1.0
 
 ### Added
