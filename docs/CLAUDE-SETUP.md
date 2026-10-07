@@ -63,7 +63,7 @@ Full command list is in [../README.md](../README.md). Read commands are safe (st
 commands change a real org and require `-Yes` — always confirm intent with the user before adding `-Yes`;
 without it the tool prints an obvious dry-run confirmation banner.
 
-- Data / ALM writes: `create update delete setstate associate disassociate add-solution-component export-solution import-solution publish-all`
+- Data / ALM writes: `create update delete setstate associate disassociate run-workflow add-solution-component export-solution import-solution publish-all`
 - Customization (metadata) writes: `create-table update-table delete-table create-column update-column delete-column create-lookup create-relationship delete-relationship create-global-optionset delete-global-optionset insert-option update-option delete-option order-options create-key publish`
 
 Pass `-Data` JSON via Bash or a single `powershell` call (a PowerShell parent mangles the quotes; use
@@ -92,11 +92,11 @@ Read-only unless -Yes. User logs in once via `... d365.ps1 login`.
 This folder is also a plugin marketplace. Install it with:
 
 ```
-/plugin marketplace add <ABSOLUTE_PATH_TO_dvxrm_FOLDER>
-/plugin install dataverse@dvxrm
+/plugin marketplace add <ABSOLUTE_PATH_TO_THIS_FOLDER>
+/plugin install Dynamics365OnPremiseAI@Dynamics365OnPremiseAI
 ```
 
-That registers the `dataverse` skill (auto-guides Claude on when/how to query the org) and the `/dv`
+That registers the `d365` skill (auto-guides Claude on when/how to query the org) and the `/dv`
 command. The user still logs in once via a terminal.
 
 ## Guardrails

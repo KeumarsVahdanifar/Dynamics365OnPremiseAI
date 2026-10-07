@@ -1,6 +1,6 @@
 ---
 name: dataverse
-description: Query AND customize a live Dynamics 365 CE (on-prem IFD/ADFS) org — read entity/attribute schema, option-set values, relationships, alternate keys, FetchXML/records, row counts, plugin steps, solutions and solution components; and (gated) write records or make schema customizations (create/update/delete tables, columns of every type, option sets, relationships, lookups, keys; edit forms, views and workflows; publish). Use whenever developing or debugging D365/Dataverse plugins or custom workflow steps, verifying logical names / attribute types / option-set integer values before writing code, when the user asks about their CRM schema or record data, or when the user wants to make customizations. SENSITIVE: the tool is session-gated — it refuses every command until `init` has armed the session; run init (this /dataverse command) first. Read-only by default; every write (data or metadata) is gated behind -Yes with an obvious confirmation banner.
+description: Query AND customize a live Dynamics 365 CE (on-prem IFD/ADFS) org — read entity/attribute schema, option-set values, relationships, alternate keys, FetchXML/records, row counts, plugin steps, solutions and solution components; and (gated) write records or make schema customizations (create/update/delete tables, columns of every type, option sets, relationships, lookups, keys; edit forms, views and workflows; publish). Use whenever developing or debugging D365/Dataverse plugins or custom workflow steps, verifying logical names / attribute types / option-set integer values before writing code, when the user asks about their CRM schema or record data, or when the user wants to make customizations. SENSITIVE: the tool is session-gated — it refuses every command until `init` has armed the session; run init (this /d365 skill) first. Read-only by default; every write (data or metadata) is gated behind -Yes with an obvious confirmation banner.
 ---
 
 # Dataverse toolkit (d365.ps1)
@@ -70,6 +70,10 @@ Write — DATA (change the org — **confirm with the user first**, then pass `-
 - `delete <entity> <id> -Yes`
 - `setstate <entity> <id> -Data '{"state":0,"status":1}' -Yes`
 - `associate|disassociate <entity> <id> <relationship> <targetEntity> <targetId> -Yes`
+- `run-workflow <workflow name|id> <entity> <id>[,<id>...] -Yes` (or `-Data '@ids.json'` for a long list) —
+  queue an activated workflow for those records, e.g. to re-run it after fixing what it does. Backs each
+  record up first and reports every job's outcome; works on workflows not marked on-demand. Queue
+  thousands in batches of a few hundred (FIELD-NOTES §8).
 
 Write — CUSTOMIZATION / metadata (**always confirm with the user first**; new schema names take the org's publisher prefix):
 - Tables: `create-table <pfx_x> -Data '{"displayName":..,"pluralName":..,"primaryName":"pfx_name","ownership":"UserOwned|OrganizationOwned"}' -Yes` · `update-table <logical> -Data '{...}' -Yes` · `delete-table <logical> -Yes`

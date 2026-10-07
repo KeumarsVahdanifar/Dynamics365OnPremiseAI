@@ -44,6 +44,9 @@
       setstate <entity> <id> -Data '{"state":0,"status":1}' -Yes
       associate    <entity> <id> <relationship> <targetEntity> <targetId> -Yes
       disassociate <entity> <id> <relationship> <targetEntity> <targetId> -Yes
+      run-workflow <workflow name|id> <entity> <id>[,<id>...] -Yes
+                   queue an activated workflow for each record (also when it is not marked
+                   on-demand); -Data '@ids.json' takes a long list (JSON array, or one id per line)
 
     Customization - metadata WRITE (require -Yes)
       New schema names need your publisher prefix, e.g. abc_thing. Set it once with
@@ -536,7 +539,8 @@ switch ($Command) {
     Write-Host "Credential cached (encrypted). Default org: $u"
     if ($p) { Write-Host "Publisher prefix: $p" }
     else    { Write-Host "No publisher prefix set. Optional: d365.ps1 login -Prefix abc_  (used to sanity-check new schema names)." }
-    Write-Host "Next: run  d365.ps1 init  (in Claude: /dataverse) to arm this session."
+    # No return: login goes on to connect with the new credential, and the main switch below
+    # reports whether that sign-in worked.
   }
   ''      { Write-Host "No command. Run:  d365.ps1 help"; return }
   'help'  { Get-Content $PSCommandPath -TotalCount 115 | Select-Object -Skip 1 | ForEach-Object { $_ -replace '^\s{0,2}','' }; return }
@@ -559,7 +563,7 @@ if ($Command -notin @('init','login','logout','help','')) {
     Write-Host '  X  DATAVERSE NOT INITIALIZED FOR THIS SESSION'
     Write-Host "     Reason : $why"
     Write-Host "     Org    : $(Get-Url)"
-    Write-Host '     Run the main dataverse init first  ->  in Claude: /dataverse'
+    Write-Host '     Run  d365.ps1 init  first  ->  in Claude Code: /d365'
     Write-Host '     (init runs whoami and shows exactly which org you are in)'
     Write-Host '============================================================'
     Write-Host ''
@@ -597,7 +601,14 @@ elseif ($u -match '@')  { $un = $u }
 $orgUrl = Get-Url
 $connStr = "AuthType=IFD;Url=$orgUrl;Domain=$dom;Username=$un;Password=$($cred.GetNetworkCredential().Password);RequireNewInstance=true"
 $svc = New-Object Microsoft.Xrm.Tooling.Connector.CrmServiceClient($connStr)
-if (-not $svc.IsReady) { throw "Connect failed: $($svc.LastCrmError)`n$($svc.LastCrmException)" }
+if (-not $svc.IsReady) {
+  if ($Command -eq 'login') {
+    throw ("The credential was cached, but signing in with it failed. Check the user name (DOMAIN\user or " +
+           "user@domain) and the password, then run login again. If a browser can still sign in, see " +
+           "FIELD-NOTES 24.`n$($svc.LastCrmError)")
+  }
+  throw "Connect failed: $($svc.LastCrmError)`n$($svc.LastCrmException)"
+}
 
 # Identity of what we are pointed at, so every confirmation banner can name it. Cheap: both come
 # off the connection itself, no extra round trip.
@@ -813,6 +824,13 @@ function New-Attr($schema, $spec) {
 
 switch ($Command) {
 
+  'login' {
+    # The early 'login' branch cached the credential; getting here means the connection above just
+    # signed in with it, so a wrong password shows up now instead of at the next command.
+    Write-Host "Verified: signed in to $($svc.ConnectedOrgFriendlyName)  ($orgUrl, v$($svc.ConnectedOrgVersion))  as $u"
+    Write-Host 'Next: run  d365.ps1 init  (in Claude Code: /d365) to arm this session.'
+  }
+
   'init' {
     $w = [Microsoft.Crm.Sdk.Messages.WhoAmIResponse]$svc.Execute((New-Object Microsoft.Crm.Sdk.Messages.WhoAmIRequest))
     [pscustomobject]@{
@@ -989,6 +1007,118 @@ switch ($Command) {
     if ($Command -eq 'associate') { $svc.Associate($Arg1.ToLower(), [guid]$Arg2, $rel, $refs) }
     else { $svc.Disassociate($Arg1.ToLower(), [guid]$Arg2, $rel, $refs) }
     J (@{ $Command = $true })
+  }
+
+  # Queues a workflow for chosen records with ExecuteWorkflowRequest - the clean way to re-run one
+  # (after fixing a custom activity, say) without writing a trigger column. FIELD-NOTES 8.
+  'run-workflow' {
+    if (-not $Arg1 -or -not $Arg2 -or (-not $Arg3 -and -not $Data)) {
+      throw ("usage: run-workflow <workflow name|id> <entity> <id>[,<id>...] -Yes`n" +
+             "       run-workflow <workflow name|id> <entity> -Data '@ids.json' -Yes   (a JSON array of ids, or one id per line)")
+    }
+    $entity = $Arg2.ToLower()
+    $source = if ($Arg3) { $Arg3 } else { $Data }
+    $ids = @([regex]::Matches($source, '[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}') |
+             ForEach-Object { $_.Value.ToLower() } | Select-Object -Unique)
+    if (-not $ids.Count) { throw "no record ids found in: $source" }
+
+    # ExecuteWorkflowRequest takes the DEFINITION's id. A name also matches the activation copies
+    # (type 2), and possibly a same-named workflow on another table, so resolve to definitions first.
+    if ($Arg1 -match '^[0-9a-fA-F-]{36}$') { $cond = "<condition attribute='workflowid' operator='eq' value='$Arg1'/>" }
+    else { $cond = "<condition attribute='name' operator='eq' value='$([System.Security.SecurityElement]::Escape($Arg1))'/>" }
+    $hits = @(Fetch "<fetch><entity name='workflow'><attribute name='type'/><attribute name='parentworkflowid'/><filter>$cond</filter></entity></fetch>")
+    $defIds = @($hits | ForEach-Object {
+      if ($_['type'].Value -eq 2 -and $_.Contains('parentworkflowid')) { "$($_['parentworkflowid'].Id)" } else { "$($_.Id)" }
+    } | Select-Object -Unique)
+    if (-not $defIds.Count) { throw "workflow '$Arg1' not found" }
+    $vals = ($defIds | ForEach-Object { "<value>$_</value>" }) -join ''
+    $defs = @(Fetch ("<fetch><entity name='workflow'><attribute name='name'/><attribute name='statecode'/><attribute name='mode'/>" +
+                     "<attribute name='runas'/><attribute name='ondemand'/><attribute name='asyncautodelete'/><attribute name='primaryentity'/>" +
+                     "<filter><condition attribute='workflowid' operator='in'>$vals</condition>" +
+                     "<condition attribute='category' operator='eq' value='0'/></filter></entity></fetch>"))
+    if (-not $defs.Count) { throw "'$Arg1' is not a workflow (category Workflow); actions, business rules and dialogs are not queued this way" }
+    $onEntity = @($defs | Where-Object { "$($_['primaryentity'])" -eq $entity })
+    if (-not $onEntity.Count) { throw "workflow '$Arg1' runs on '$((@($defs | ForEach-Object { $_['primaryentity'] }) | Select-Object -Unique) -join "', '")', not on '$entity'" }
+    if ($onEntity.Count -gt 1) { throw "'$Arg1' matches $($onEntity.Count) workflows on '$entity'; pass one id instead: $(@($onEntity | ForEach-Object { $_.Id }) -join ', ')" }
+    $wf = $onEntity[0]
+    # FormattedValues throws on a missing key, so look labels up through this
+    function FV($e, $k) { if ($e.FormattedValues.ContainsKey($k)) { $e.FormattedValues[$k] } else { '' } }
+    if ($wf['statecode'].Value -ne 1) { throw "workflow '$($wf['name'])' is not activated ($(FV $wf 'statecode')); activate it first" }
+    $autoDelete = ($wf.Contains('asyncautodelete') -and [bool]$wf['asyncautodelete'])
+
+    $traits = @("$(FV $wf 'mode')", "runs as $(FV $wf 'runas')")
+    if ($autoDelete) { $traits += 'finished jobs are deleted automatically' }
+    if ($wf.Contains('ondemand') -and -not [bool]$wf['ondemand']) { $traits += 'not marked on-demand (queued all the same)' }
+    $shown = @($ids | Select-Object -First 5 | ForEach-Object { "    $_  ($(Describe-Record $entity $_))" })
+    if ($ids.Count -gt 5) { $shown += "    ... and $($ids.Count - 5) more" }
+    $day = Join-Path $backupRoot (Get-Date).ToString('yyyy-MM-dd')
+    Need-Yes "RUN WORKFLOW '$($wf['name'])' on $($ids.Count) '$entity' record(s)" `
+             (@("Workflow     : $($wf['name'])  ($($wf.Id))",
+                "               $($traits -join ', ')",
+                'Records      :') + $shown +
+              @("What changes is whatever the workflow's steps do; this command does not read them.",
+                'Each record is backed up in full just before its job is queued. Restoring one writes',
+                'every column back, which can fire workflows registered on those columns again.')) `
+             "one file per record under $day, written as each job is queued" $false
+
+    $results = New-Object System.Collections.Generic.List[object]
+    foreach ($id in $ids) {
+      # same rule as every other write: nothing changes before its current state is on disk
+      $bk = Backup-Record $entity $id
+      if (-not $bk) { $results.Add([ordered]@{ id = $id; code = -1; status = 'not run: the record could not be read and backed up' }); continue }
+      try {
+        $req = New-Object Microsoft.Crm.Sdk.Messages.ExecuteWorkflowRequest
+        $req.WorkflowId = $wf.Id
+        $req.EntityId = [guid]$id
+        $resp = [Microsoft.Crm.Sdk.Messages.ExecuteWorkflowResponse]$svc.Execute($req)
+        $results.Add([ordered]@{ id = $id; job = "$($resp.Id)"; code = 0; status = 'queued'; backup = $bk })
+      } catch {
+        $results.Add([ordered]@{ id = $id; code = -1; status = "not run: $($_.Exception.Message)"; backup = $bk })
+      }
+    }
+
+    # Follow the system jobs for up to two minutes. With automatic deletion on, a job that ran to
+    # completion disappears from asyncoperation moments later, so an id that no longer resolves has
+    # finished - check the record itself for what it did.
+    $queued = @($results | Where-Object { $_.job })
+    $deadline = (Get-Date).AddMinutes(2)
+    while ($queued.Count) {
+      $seen = @{}
+      for ($i = 0; $i -lt $queued.Count; $i += 200) {
+        $chunk = $queued[$i..([Math]::Min($i + 199, $queued.Count - 1))]
+        $jv = ($chunk | ForEach-Object { "<value>$($_.job)</value>" }) -join ''
+        foreach ($j in (Fetch ("<fetch><entity name='asyncoperation'><attribute name='statecode'/><attribute name='statuscode'/>" +
+                               "<attribute name='message'/><filter><condition attribute='asyncoperationid' operator='in'>$jv</condition>" +
+                               "</filter></entity></fetch>"))) { $seen["$($j.Id)"] = $j }
+      }
+      $open = 0
+      foreach ($r in $queued) {
+        $j = $seen[$r.job]
+        if (-not $j) {
+          if ($autoDelete) { $r.code = 30; $r.status = 'finished (job deleted automatically)' }
+          else { $r.code = -2; $r.status = 'job not found' }
+          continue
+        }
+        $r.code = $j['statuscode'].Value
+        $r.status = "$(FV $j 'statuscode')"
+        if ($j.Contains('message') -and $j['message']) { $r.message = "$($j['message'])" }
+        if ($j['statecode'].Value -eq 0 -or $j['statecode'].Value -eq 2) { $open++ }   # Ready / Locked = still to run
+      }
+      if ($open -eq 0 -or (Get-Date) -gt $deadline) { break }
+      Start-Sleep -Seconds 5
+    }
+
+    $outcome = [ordered]@{}
+    foreach ($g in ($results | Group-Object { $_.status })) { $outcome[$g.Name] = $g.Count }
+    # 30 = Succeeded. Anything else - failed, waiting, still queued, not run - is listed.
+    $attention = @($results | Where-Object { $_.code -ne 30 } | Select-Object -First 50 | ForEach-Object { [pscustomobject]$_ })
+    $res = [ordered]@{ Workflow = "$($wf['name'])"; WorkflowId = "$($wf.Id)"; Entity = $entity; Records = $ids.Count
+                       Outcome = $outcome; Backups = $day }
+    if ($attention.Count) { $res.NeedsAttention = $attention }
+    if (@($results | Where-Object { $_.code -eq 0 -or $_.code -eq 10 -or $_.code -eq 20 }).Count) {
+      $res.Note = 'Some jobs were still waiting or running after two minutes; follow them in Settings > System Jobs.'
+    }
+    J ([pscustomobject]$res)
   }
 
   'plugin-steps' {

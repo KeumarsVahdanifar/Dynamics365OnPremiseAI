@@ -27,7 +27,7 @@ powershell -ExecutionPolicy Bypass -File ./d365.ps1 <command> [args] -Session "$
   the user the confirmation banner, and get their OK before re-running with `-Yes`.** The banner states
   the organisation, the record, `old -> new` for every column, whether the change is reversible, and
   the local backup path — that is what the user needs in order to agree to it.
-  - Data / ALM: `create update delete setstate associate disassociate add-solution-component export-solution import-solution publish-all`
+  - Data / ALM: `create update delete setstate associate disassociate run-workflow add-solution-component export-solution import-solution publish-all`
   - Customization (metadata): `create-table update-table delete-table create-column update-column delete-column create-lookup create-relationship delete-relationship create-global-optionset delete-global-optionset insert-option update-option delete-option order-options create-key publish`
   - Web resources: `create-webresource update-webresource publish-webresource` (nothing is live until published)
 - **Every write is backed up first**, under the .dataverse/backups folder in the user profile. If something

@@ -38,7 +38,7 @@ const READ_COMMANDS = [
 ];
 
 const WRITE_COMMANDS = [
-    'create', 'update', 'delete', 'setstate', 'associate', 'disassociate',
+    'create', 'update', 'delete', 'setstate', 'associate', 'disassociate', 'run-workflow',
     'create-table', 'update-table', 'delete-table',
     'create-column', 'update-column', 'delete-column',
     'create-lookup', 'create-relationship', 'delete-relationship',

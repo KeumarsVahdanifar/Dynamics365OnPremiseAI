@@ -5,6 +5,34 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.0
+
+### Added
+
+- **`run-workflow <workflow name|id> <entity> <id>[,<id>...] -Yes`** queues an activated workflow for
+  chosen records through `ExecuteWorkflowRequest`; `-Data '@ids.json'` takes a long list (a JSON array,
+  or one id per line). The banner names the workflow, how it runs and which records. Each record is
+  backed up in full just before its job is queued, and the command then follows the jobs for up to two
+  minutes and lists anything that failed or is still waiting. This replaces the hand-written script
+  for "re-run the workflow on these records" after fixing what the workflow does. It queues workflows
+  that are not marked on-demand, and resolves a name to the definition rather than an activation copy
+  ([FIELD-NOTES §8](docs/FIELD-NOTES.md)). Also on the MCP surface as a write command
+  (`d365_plan_write` / `d365_apply_write`).
+
+### Fixed
+
+- **`login` ended with `Unknown command 'login'`** although it had worked. After caching the
+  credential it went on to connect, which is useful because it proves the password, and then fell
+  through the command switch, which had no `login` case. It now ends with
+  `Verified: signed in to <org>`, and a sign-in that fails says the credential was cached but did not
+  work, instead of a bare `Connect failed`.
+- The tool's hints and the docs pointed at a `/dataverse` command; the plugin's skill is `/d365`.
+
+### Documentation
+
+- `docs/CLAUDE-SETUP.md` installed the plugin under its old name (`dataverse@dvxrm`); it is
+  `Dynamics365OnPremiseAI@Dynamics365OnPremiseAI`.
+
 ## 2.1.1
 
 ### Documentation

@@ -299,6 +299,29 @@ Put only the **business** fields in the trigger list. Leave the status/timestamp
 Test both directions explicitly: edit a business field (flag must flip) *and* write the flag column
 (workflow must **not** fire).
 
+### Re-running a workflow for records it already processed
+
+After you fix what a workflow does (its custom activity, say), the records it already ran on keep the
+old result until something triggers it again. Queue the workflow itself; nothing on the record has to
+be written to start it:
+
+```
+run-workflow "<workflow name>" account <id>[,<id>...] -Yes
+run-workflow "<workflow name>" account -Data '@ids.json' -Yes      # a long list
+```
+
+Verified on 9.1, re-running a background workflow for a few thousand records:
+
+- `ExecuteWorkflowRequest` queued a workflow that is **not** marked "available to run on demand", and
+  it ran. The on-demand flag decides what users see under *Run Workflow*, not what the API may run.
+- It takes the **definition's** id. The activation copies above carry the same name, so a lookup by
+  name has to resolve to the definition first; `run-workflow` does that.
+- With *Automatically delete completed workflow jobs* on, each system job (`asyncoperation`) was gone
+  seconds after it ran, so a job id that no longer resolves means the job finished. It does not say
+  what the workflow did: read the records for that.
+- Queued 300 at a time, waiting for each batch to drain before the next, every batch finished within
+  a minute. Split a list of thousands the same way rather than queueing it in one go.
+
 ---
 
 ## 9. Editing forms

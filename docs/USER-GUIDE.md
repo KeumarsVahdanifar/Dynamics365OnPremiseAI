@@ -63,7 +63,7 @@ powershell -ExecutionPolicy Bypass -File .\d365.ps1 init
 
 `init` runs whoami and prints the connected **ORG / URL / VERSION / USER**, then writes an arm marker
 (`%USERPROFILE%\.dataverse\session.arm`). The marker is good for 12h, or until you `login`/`logout`/`config`
-or the org changes. Inside Claude Code this happens automatically via the `/dataverse` command, scoped to the
+or the org changes. Inside Claude Code this happens automatically via the `/d365` skill, scoped to the
 Claude session id (`-Session`), so each new Claude session must re-init.
 
 If you see `X DATAVERSE NOT INITIALIZED FOR THIS SESSION`, just run `init` again.

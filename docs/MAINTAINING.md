@@ -35,7 +35,7 @@ Pick the narrowest place that fits:
   that already has one.
 - **`d365.ps1`** — if the lesson is "the tool did the wrong thing" or "the tool cannot do X",
   **fix the tool**. See rule 4 below.
-- **`skills/dataverse/SKILL.md`** — only for the handful of rules that must be known *before* acting,
+- **`skills/d365/SKILL.md`** — only for the handful of rules that must be known *before* acting,
   because getting them wrong is destructive or wastes a whole run. Keep this file short; it loads into
   context every time. Link to FIELD-NOTES for the detail.
 - **`CLAUDE.md`** — one-liners an agent needs at a glance. Same bar as SKILL.md.

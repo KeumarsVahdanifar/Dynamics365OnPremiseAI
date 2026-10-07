@@ -14,13 +14,13 @@ Notes:
 - `d365.ps1` is at the **root of the plugin folder**, beside `lib/` — not inside `skills/`.
 - **Session gate:** every command except `config`/`init`/`login`/`logout`/`help` refuses until the session is
   armed. If output shows `X DATAVERSE NOT INITIALIZED FOR THIS SESSION` (exit 2), the user must run the main
-  `/dataverse` command first (it runs `init`, which does whoami and shows the org). Then retry.
+  `/d365` skill first (it runs `init`, which does whoami and shows the org). Then retry.
 - If it reports "No cached credential", tell the user to run once in their own terminal:
   `powershell -ExecutionPolicy Bypass -File "<plugin>/d365.ps1" login`
 - If it reports "No org URL configured", the org has not been set yet:
   `powershell -ExecutionPolicy Bypass -File "<plugin>/d365.ps1" config -Url https://<host>/<org> [-Prefix abc_]`
   (no credential prompt, safe to run for the user).
-- Any command that changes the org — DATA (create/update/delete/setstate/associate/disassociate/import-solution/
+- Any command that changes the org — DATA (create/update/delete/setstate/associate/disassociate/run-workflow/import-solution/
   add-solution-component) or CUSTOMIZATION/metadata (create-table/update-table/delete-table,
   create-column/update-column/delete-column, create-lookup, create-relationship/delete-relationship,
   create-global-optionset/delete-global-optionset, insert-option/update-option/delete-option/order-options,

@@ -15,7 +15,7 @@ stops protecting you.
 |---|---|---|
 | **Nothing happens without a session** | Every command except `config`/`login`/`logout`/`help`/`init` refuses until `init` has run this session. `init` prints the org, URL, version and user. | It proves *which* org, not that it is the right one. Read the banner. |
 | **Nothing happens without confirmation** | Every write prints what will change, where, whether it is reversible and where the backup went, then exits. Only `-Yes` executes. | If you paste `-Yes` reflexively, you have removed the only human in the loop. |
-| **Nothing is lost silently** | Before any update, delete, state change, web resource overwrite or solution import, the current state is written to `%USERPROFILE%\.dataverse\backups\<date>\` and logged in `backups.jsonl`. | Backups cover what the API can read back. See the honest limits in section 4. |
+| **Nothing is lost silently** | Before any update, delete, state change, workflow run, web resource overwrite or solution import, the current state is written to `%USERPROFILE%\.dataverse\backups\<date>\` and logged in `backups.jsonl`. | Backups cover what the API can read back. See the honest limits in section 4. |
 | **You can put things back** | `restore <backupfile> -Yes` writes a record's values back, or republishes a web resource's previous content, or re-imports a solution export - itself gated and backed up. | Schema and option-set deletes are documented, not undoable. |
 
 ## 2. Read the banner - it is the whole safety model

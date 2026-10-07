@@ -101,7 +101,7 @@ Full command list: `.\d365.ps1 help`
 | Session | `config` `login` `logout` `init` `whoami` `version` |
 | Schema (read) | `list-entities` `entity` `attrs` `relationships` `optionsets` `global-optionset` `keys` |
 | Data (read) | `fetch` `retrieve` `query` `count` |
-| Data (write) | `create` `update` `delete` `setstate` `associate` `disassociate` |
+| Data (write) | `create` `update` `delete` `setstate` `associate` `disassociate` `run-workflow` |
 | Tables & columns | `create-table` (incl. **activity tables**) `update-table` `delete-table` `create-column` `update-column` `delete-column` |
 | Choices | `create-global-optionset` `delete-global-optionset` `insert-option` `update-option` `delete-option` `order-options` |
 | Relationships & keys | `create-lookup` `create-relationship` `delete-relationship` `create-key` |
