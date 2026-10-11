@@ -5,6 +5,15 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.1
+
+### Documentation
+
+- **Registering a plug-in through the SDK** ([FIELD-NOTES §24](docs/FIELD-NOTES.md)), next to the Web
+  API recipe already there: creating the assembly does not create its plug-in types, the step's
+  `eventhandler` is an `EntityReference` to the type, and `CreateRequest.Parameters['SolutionUniqueName']`
+  puts the assembly and the step straight into a solution.
+
 ## 2.2.0
 
 ### Added

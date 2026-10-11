@@ -739,6 +739,18 @@ Verified on 9.1 on-premises by registering a plug-in end to end this way:
 - Look navigation property names up in `EntityDefinitions(LogicalName='x')/ManyToOneRelationships`
   instead of guessing them.
 
+When the SDK can sign in, the same registration works on the tool's own connection (§14). Verified on
+9.1 on-premises:
+
+- Creating the `pluginassembly` does not create its `plugintype` rows: there were none right after the
+  `Create`. Create one per class, `typename` = the full class name, `pluginassemblyid` = the assembly.
+- The step's `eventhandler` takes `EntityReference('plugintype', <id>)`; `sdkmessagefilterid` is the
+  filter whose `primaryobjecttypecode` is the entity's type code as an int (§4).
+- `CreateRequest.Parameters['SolutionUniqueName']` is the SDK's `MSCRM.SolutionUniqueName`: an assembly
+  and a step created through it are listed in `solutioncomponents` (types 91 and 92).
+- The secure configuration is its own `sdkmessageprocessingstepsecureconfig` row, created first and
+  referenced from the step's `sdkmessageprocessingstepsecureconfigid`.
+
 This path has none of `d365.ps1`'s safety net - no confirmation banner, no backup. Give the module a
 read-only mode that runs the same lookups and prints what it would create, show that first, and keep the
 ids of everything created so it can be deleted again. The `cfg` a check module receives carries the
