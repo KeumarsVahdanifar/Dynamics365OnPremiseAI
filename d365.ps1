@@ -636,12 +636,19 @@ function Row($r) {
   $o = [ordered]@{}
   foreach ($k in $r.Attributes.Keys) {
     $v = $r[$k]
-    switch ($v.GetType().Name) {
-      'EntityReference' { $o[$k] = [ordered]@{ id = "$($v.Id)"; entity = $v.LogicalName; name = $v.Name } }
-      'OptionSetValue'  { $o[$k] = $v.Value }
-      'Money'           { $o[$k] = $v.Value }
-      'AliasedValue'    { $o[$k] = $v.Value }
-      default           { $o[$k] = $v }
+    # Link-entity and aggregate columns arrive wrapped in an AliasedValue. Unwrap first so the inner
+    # value gets the same shape as a top-level column, not the raw SDK object (FIELD-NOTES 3b).
+    if ($v -is [Microsoft.Xrm.Sdk.AliasedValue]) { $v = $v.Value }
+    if ($null -eq $v) { $o[$k] = $null }
+    else {
+      switch ($v.GetType().Name) {
+        # pscustomobject, not a dictionary: same JSON, and Fmt-Val can show it in a banner
+        'EntityReference' { $o[$k] = [pscustomobject][ordered]@{ id = "$($v.Id)"; entity = $v.LogicalName; name = $v.Name } }
+        'OptionSetValue'  { $o[$k] = $v.Value }
+        'Money'           { $o[$k] = $v.Value }
+        'OptionSetValueCollection' { $o[$k] = @($v | ForEach-Object { $_.Value }) }   # multi-select
+        default           { $o[$k] = $v }
+      }
     }
     if ($r.FormattedValues.ContainsKey($k)) { $o["$k@display"] = $r.FormattedValues[$k] }
   }
