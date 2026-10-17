@@ -322,6 +322,40 @@ Verified on 9.1, re-running a background workflow for a few thousand records:
 - Queued 300 at a time, waiting for each batch to drain before the next, every batch finished within
   a minute. Split a list of thousands the same way rather than queueing it in one go.
 
+### Writing a "build the name" Update step by hand
+
+A designer *Update* step that sets a text column from static text plus field values can be written
+straight into the XAML. Verified on 9.1: hand-written, activated, and it named the record on create and
+renamed it on each trigger-field update. Copy the shape from an activated workflow that already does
+it. A `like` on the memo column finds one:
+
+```xml
+<condition attribute="xaml" operator="like" value="%WorkflowPropertyType.String%" />
+<condition attribute="xaml" operator="like" value="%&gt;NotNull&lt;%" />   <!-- or a custom activity's type name -->
+```
+
+- **Pieces.** Each static piece is an `EvaluateExpression` `CreateCrmType` with
+  `[New Object() { Microsoft.Xrm.Sdk.Workflow.WorkflowPropertyType.String, "<text>", "String" }]`. Each
+  field is a `GetEntityProperty` with `TargetType` `x:String`, then `SelectFirstNonNull`. One
+  `EvaluateExpression` `Add` joins the results, and a `SetEntityProperty` plus `UpdateEntity` on
+  `CreatedEntities("primaryEntity#Temp")` write them.
+- **Non-ASCII static text.** The designer stores each non-ASCII character as `&#N;` inside the VB string
+  literal, so the file holds `&amp;#N;`. The runtime decodes it: `"&amp;#1575;&amp;#1586;"` came out as
+  `از`. Writing it that way keeps the whole XAML ASCII, so payload encoding cannot corrupt it.
+- **How values render inside the text.** A lookup gives its primary name. A whole number gives `40`,
+  but `99,999` from 1000 up because a group separator is added. A date-only column gives `14/10/2026`,
+  date only and no day shift, in the run-as user's date format. A date-and-time column in another
+  workflow came out as `06/26/2026 2:57 PM`. Budget the longest possible values against the target
+  column's `MaxLength`.
+- **Optional fields.** Guard them with a `NotNull` `EvaluateCondition` (`<x:Null x:Key="Parameters" />`)
+  and an *otherwise* branch. That branch is a second `ConditionBranch` whose `Condition` is the literal
+  `True`, and the `ConditionSequence` sets `ContainsElseBranch` to `True`. Both branches were exercised
+  by setting the field and then clearing it.
+- **A draft saved before any field was picked** has an empty `triggeronupdateattributelist`,
+  `x:Class="XrmWorkflow000…"` and scope `1` (User). Set the trigger list as comma-separated logical names
+  (leave the column being written out of it), `updatestage` `40`, the scope you want, and the XAML in
+  one `update`, then activate.
+
 ---
 
 ## 9. Editing forms
@@ -755,3 +789,107 @@ This path has none of `d365.ps1`'s safety net - no confirmation banner, no backu
 read-only mode that runs the same lookups and prints what it would create, show that first, and keep the
 ids of everything created so it can be deleted again. The `cfg` a check module receives carries the
 password: never return or log it.
+
+---
+
+## 25. Audit history: who changed what, and when
+
+`audit` answers "who moved this record into this state", but FetchXML only reaches part of it.
+
+- `audit` itself is queryable, aggregates included: `objectid`, `objecttypecode` (the int, §4),
+  `action`, `operation`, `userid`, `createdon`, `attributemask`. `changedata` is not:
+  ```
+  Retrieve can only return columns that are valid for read.  Column : changedata. Entity : audit
+  ```
+- `attributemask` is a comma-separated list of **column numbers** (`AttributeMetadata.ColumnNumber`),
+  not names. On the entity checked, `30,32` meant `statecode`,`statuscode`, and custom columns were
+  numbered from 10001 up. `attrs` does not print column numbers, so map them through the SDK (§14):
+  ```powershell
+  $r = New-Object Microsoft.Xrm.Sdk.Messages.RetrieveEntityRequest
+  $r.LogicalName = 'account'; $r.EntityFilters = [Microsoft.Xrm.Sdk.Metadata.EntityFilters]::Attributes
+  $svc.Execute($r).EntityMetadata.Attributes | Sort-Object ColumnNumber | Select-Object ColumnNumber, LogicalName
+  ```
+- Old and new values come from `RetrieveRecordChangeHistoryRequest`. Entries arrive newest first. An
+  `AttributeAuditDetail`'s `OldValue`/`NewValue` hold only the columns that changed:
+  ```powershell
+  $h = New-Object Microsoft.Crm.Sdk.Messages.RetrieveRecordChangeHistoryRequest
+  $h.Target = New-Object Microsoft.Xrm.Sdk.EntityReference('account', [guid]'<id>')
+  foreach ($d in $svc.Execute($h).AuditDetailCollection.AuditDetails) {
+    $a = $d.AuditRecord   # createdon, userid (.Name), FormattedValues['action']
+    if ($d -is [Microsoft.Crm.Sdk.Messages.AttributeAuditDetail] -and $d.NewValue) {
+      foreach ($k in $d.NewValue.Attributes.Keys) {
+        $old = $null; if ($d.OldValue -and $d.OldValue.Contains($k)) { $old = $d.OldValue[$k] }
+        "$k : $old -> $($d.NewValue[$k])"   # OptionSetValue / EntityReference: read .Value / .Name
+      }
+    }
+  }
+  ```
+  The oldest entry is an **Entity Audit Started** row, and nothing before its date was recorded. For a
+  table that is not audited, the collection comes back empty with no error.
+- A bulk edit shows up as one mask with a large count. Group one day's rows by `attributemask`:
+  ```xml
+  <fetch aggregate="true"><entity name="audit">
+    <attribute name="auditid" alias="n" aggregate="count"/>
+    <attribute name="attributemask" alias="mask" groupby="true"/>
+    <filter><condition attribute="objecttypecode" operator="eq" value="1"/>
+            <condition attribute="createdon" operator="on" value="2026-01-31"/></filter>
+  </entity></fetch>
+  ```
+  Verified: one day returned a single mask (one custom column) on 1,119 rows. That was a bulk fill,
+  not the change being chased.
+- When auditing does not cover a child table, compare `modifiedon` to the second. Child rows that the
+  platform changed as part of the parent's request carried `modifiedon` within the seconds up to the
+  parent's audit stamp, and `modifiedby` = the same user (§26).
+
+---
+
+## 26. Product bundles: lines follow the bundle's state, except Active → Draft
+
+A bundle's lines are `productassociation` rows: `productid` is the bundle and `associatedproduct` is
+the member. The state/status pairs, read from `statusmap` (each state has exactly one status on both
+tables):
+
+| state | `product` (status) | `productassociation` (status) |
+|---|---|---|
+| 0 | Active (1) | Active (1 Active) |
+| 1 | Retired (2) | Inactive (2 Inactive) |
+| 2 | Draft (0) | Draft (0 Draft) |
+| 3 | Under Revision (3) | Under Revision (3 DraftActive) |
+
+```xml
+<fetch><entity name="statusmap">
+  <attribute name="state"/><attribute name="status"/><attribute name="isdefault"/>
+  <filter><condition attribute="objecttypecode" operator="in"><value>1024</value><value>1025</value></condition></filter>
+</entity></fetch>
+```
+
+Normally a line's state follows its bundle's: Active with Active, Inactive with Retired, Draft with
+Draft, Under Revision with Under Revision. Verified: 3,066 of 3,173 lines on one org paired that way.
+This query shows the pairs:
+
+```xml
+<fetch aggregate="true"><entity name="productassociation">
+  <attribute name="productassociationid" alias="n" aggregate="count"/>
+  <attribute name="statecode" alias="line_state" groupby="true"/>
+  <link-entity name="product" from="productid" to="productid" link-type="inner" alias="b">
+    <attribute name="statecode" alias="bundle_state" groupby="true"/>
+  </link-entity>
+</entity></fetch>
+```
+
+- **Moving an Active bundle straight back to Draft deactivates its lines, and they stay Inactive.**
+  Seen twice, by different users years apart. Each time an audited `product` Update set
+  `statecode 0 → 2` and `statuscode 1 → 0`. In the same seconds every line of that bundle went to
+  Inactive (1/2), with `modifiedby` = the same user. `productassociation` was not audited, so the
+  evidence is `modifiedon` (§25): 2 lines at the bundle's exact second, and 31 lines over the two
+  seconds ending at it. No custom plug-in step, workflow or ribbon command on `product` touched state,
+  which points to the platform. A line added later is created Draft, so the bundle ends up with Inactive and
+  Draft lines side by side. This was observed, not reproduced on demand. Test on a non-production org
+  before relying on what a later Publish does with the Inactive lines.
+- **A product can hold a state/status pair that `statusmap` does not allow.** Seen: `statecode` 2
+  (Draft) with `statuscode` 2 (Retired). Its last state change predates the table's Entity Audit
+  Started row, so its origin was not visible. Check both columns against `statusmap` rather than trust
+  either one alone.
+- **The stock `productassociation` views have no state filter.** None of the five system views filters
+  `statecode`, so those views (Advanced Find's default included) list Inactive lines next to live ones. Anything
+  that reads the table directly has to filter `statecode` itself.

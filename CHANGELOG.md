@@ -5,6 +5,24 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.2
+
+### Documentation
+
+- **Writing a "build the name" Update step by hand** ([FIELD-NOTES §8](docs/FIELD-NOTES.md)). Covers the
+  designer's pieces for static text, field values and the join. Non-ASCII static text goes in as
+  `&amp;#N;` and the runtime decodes it. It also shows how lookups, whole numbers and dates render inside
+  the text, a `NotNull` guard with an *otherwise* branch for optional fields, and what a fresh designer
+  draft is missing. Verified by writing such a workflow, activating it, and exercising both branches.
+- **Audit history** ([FIELD-NOTES §25](docs/FIELD-NOTES.md)). `audit.changedata` cannot be read through
+  FetchXML. `attributemask` lists column numbers, not names. `RetrieveRecordChangeHistoryRequest` gives
+  old and new values, and grouping a day's audit rows by mask exposes a bulk edit. When a child table is
+  not audited, matching `modifiedon` to the second stands in.
+- **Product bundle line states** ([FIELD-NOTES §26](docs/FIELD-NOTES.md)). Covers the state/status map
+  from `statusmap` and a query that pairs line state with bundle state. It also covers the observed
+  case where moving an Active bundle back to Draft leaves its lines Inactive, a state/status pair
+  `statusmap` does not allow, and the stock views having no state filter.
+
 ## 2.2.1
 
 ### Documentation
