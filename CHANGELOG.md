@@ -5,6 +5,18 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.3
+
+### Documentation
+
+- **Creating a workflow with no designer draft** ([FIELD-NOTES §8](docs/FIELD-NOTES.md)). Uses
+  `create workflow -Data '@wf.json' -Solution <uniquename>` with the columns a real-time workflow needs
+  and a preset `workflowid`, then `setstate` to activate. `iscrmuiworkflow` cannot be set, and CRM
+  gives it `true`. Verified by creating two workflows into a patch solution and firing them.
+- The name-step note now says dates follow the run-as user's date format. The same step gave
+  `14/10/2026` as the calling user and `10/18/2026` as the owner. It also says a lookup's name goes in
+  with its trailing spaces.
+
 ## 2.2.2
 
 ### Documentation

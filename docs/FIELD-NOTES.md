@@ -342,11 +342,13 @@ it. A `like` on the memo column finds one:
 - **Non-ASCII static text.** The designer stores each non-ASCII character as `&#N;` inside the VB string
   literal, so the file holds `&amp;#N;`. The runtime decodes it: `"&amp;#1575;&amp;#1586;"` came out as
   `از`. Writing it that way keeps the whole XAML ASCII, so payload encoding cannot corrupt it.
-- **How values render inside the text.** A lookup gives its primary name. A whole number gives `40`,
-  but `99,999` from 1000 up because a group separator is added. A date-only column gives `14/10/2026`,
-  date only and no day shift, in the run-as user's date format. A date-and-time column in another
-  workflow came out as `06/26/2026 2:57 PM`. Budget the longest possible values against the target
-  column's `MaxLength`.
+- **How values render inside the text.** A lookup gives its primary name verbatim, trailing spaces
+  included, so put a lookup whose names are padded last in the text. A whole number gives `40`, but
+  `99,999` from 1000 up because a group separator is added. A date-only column gives the date only, with
+  no day shift, in the date format of the user the workflow runs as. The same step shape gave
+  `14/10/2026` running as the calling user and `10/18/2026` running as an owner with US settings. A
+  date-and-time column in another workflow came out as `06/26/2026 2:57 PM`. Budget the longest possible
+  values against the target column's `MaxLength`.
 - **Optional fields.** Guard them with a `NotNull` `EvaluateCondition` (`<x:Null x:Key="Parameters" />`)
   and an *otherwise* branch. That branch is a second `ConditionBranch` whose `Condition` is the literal
   `True`, and the `ConditionSequence` sets `ContainsElseBranch` to `True`. Both branches were exercised
@@ -355,6 +357,17 @@ it. A `like` on the memo column finds one:
   `x:Class="XrmWorkflow000…"` and scope `1` (User). Set the trigger list as comma-separated logical names
   (leave the column being written out of it), `updatestage` `40`, the scope you want, and the XAML in
   one `update`, then activate.
+- **No draft at all.** Create the workflow record itself, then activate it:
+  ```
+  create workflow -Data '@wf.json' -Solution <uniquename> -Yes
+  setstate workflow <id> -Data '{"state":1,"status":2}' -Yes
+  ```
+  `wf.json` carries `name`, `type` `1`, `category` `0`, `primaryentity`, `mode`, `scope`, `runas`,
+  `ownerid`, `triggeroncreate`, `createstage`, `updatestage`, `triggeronupdateattributelist` and
+  `xaml`. Preset `workflowid` too, so the XAML can name its class `XrmWorkflow<id without dashes>`
+  the way the designer does. Verified: two workflows created this way into a patch solution landed in
+  it as solution components, activated, and fired. `iscrmuiworkflow` cannot be set on create or update
+  (`IsValidForCreate` false), and CRM gave both of them `true`.
 
 ---
 
