@@ -927,7 +927,8 @@ switch ($Command) {
     # inline XML contains '<'; only treat as a file path when it does not (and the file exists)
     $xml = if ($Arg1 -match '<') { $Arg1 } elseif (Test-Path -LiteralPath $Arg1) { Get-Content -LiteralPath $Arg1 -Raw -Encoding UTF8 } else { $Arg1 }
     $rows = Fetch $xml | Select-Object -First $Top
-    J (@{ Count=$rows.Count; Rows=($rows | ForEach-Object { Row $_ }) })
+    # @() keeps Rows an array: one row would otherwise serialise as a bare object, and no rows as {}
+    J (@{ Count=$rows.Count; Rows=@($rows | ForEach-Object { Row $_ }) })
   }
 
   'retrieve' {
@@ -942,7 +943,7 @@ switch ($Command) {
     $q.TopCount = $Top
     if ($Filter -and $Filter -match '^(.+?)=(.*)$') { $q.Criteria.AddCondition($matches[1], [Microsoft.Xrm.Sdk.Query.ConditionOperator]::Equal, $matches[2]) }
     $rows = $svc.RetrieveMultiple($q).Entities
-    J (@{ Count=$rows.Count; Rows=($rows | ForEach-Object { Row $_ }) })
+    J (@{ Count=$rows.Count; Rows=@($rows | ForEach-Object { Row $_ }) })
   }
 
   'count' {

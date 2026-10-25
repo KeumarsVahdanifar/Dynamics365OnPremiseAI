@@ -5,6 +5,15 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.4
+
+### Fixed
+
+- **`fetch` and `query` always return `Rows` as an array.** With exactly one row, `Rows` came out as a
+  bare object, and with no rows as `{}`. A consumer that loops over `Rows` (Node, `jq`, a
+  `JSON.parse` script) then broke on single-row results such as most aggregate queries. `Count` was
+  already right. Verified on a live org with one, zero and two rows, an aggregate, and `query`.
+
 ## 2.2.3
 
 ### Documentation
