@@ -5,6 +5,15 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.5
+
+### Documentation
+
+- **Finding a column on the forms, and who gets which form** ([FIELD-NOTES §9](docs/FIELD-NOTES.md)).
+  Where a control sits in `formxml`, and how a column on a form can still be hidden on a tab that
+  script shows. Form order and security roles are the `<DisplayConditions>` element inside `formxml`,
+  because `systemform` has no `displayconditions` column. Verified on a live org.
+
 ## 2.2.4
 
 ### Fixed

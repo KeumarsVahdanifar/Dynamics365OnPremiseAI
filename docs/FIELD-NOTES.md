@@ -393,6 +393,38 @@ Notes:
   that already renders the type you want.
 - Generate fresh GUIDs for new tab/section/cell ids.
 
+### Finding a column on the forms, and who gets which form
+
+Fetch every form of the table with its layout (`objecttypecode` takes the int, see §4):
+
+```xml
+<fetch><entity name="systemform">
+  <attribute name="name"/><attribute name="type"/><attribute name="formactivationstate"/><attribute name="formxml"/>
+  <filter><condition attribute="objecttypecode" operator="eq" value="1"/></filter>
+</entity></fetch>
+```
+
+- A column on a form is a `<control ... datafieldname="abc_code" />`, nested `<tab>` → `<column>` →
+  `<section>` → `<row>` → `<cell>`. Tabs, sections and cells carry their caption in a `<labels>` block
+  straight after the opening tag. Check every form: one column was on 3 of a table's 14 forms.
+- A column that is on the form can still be hidden. Check `visible="false"` on its tab, section and
+  cell. A form script can show a hidden tab, so search the form's `<Library name="...">` web resources
+  for the tab's `name`, e.g. `tabs.get("<name>").setVisible(true)`. Seen: a tab hidden in the layout
+  that an OnLoad / OnChange handler shows only for some values of a lookup.
+- **Form order and form security roles are not columns.** `<attribute name="displayconditions"/>` on
+  `systemform` fails with `'SystemForm' entity doesn't contain attribute with Name =
+  'displayconditions'`. They are the `<DisplayConditions>` element inside `formxml`. Its position
+  varies (after `</tabs>`, `</header>` or `</events>`), so search for it instead of assuming one:
+
+  ```xml
+  <DisplayConditions FallbackForm="true" Order="3"><Everyone /></DisplayConditions>
+  <DisplayConditions Order="6"><Role Id="{...}" /><Role Id="{...}" /></DisplayConditions>
+  <DisplayConditions FallbackForm="true" Order="2" />
+  ```
+
+  Some forms have no `<DisplayConditions>` at all. Seen on an active main form, a card form and a
+  dashboard.
+
 ---
 
 ## 10. Solutions
