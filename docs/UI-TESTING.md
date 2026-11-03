@@ -86,7 +86,7 @@ async function run({ page, shot }) {
 module.exports = { run };
 ```
 
-Two modules ship with the plugin:
+Three modules ship with the plugin:
 
 - **`checks/probe-header.js`** — dumps the shell's top-bar DOM (ids, `data-id`s, rectangles, likely
   containers). Run this *before* writing selectors that touch the application header; it is how the
@@ -94,6 +94,16 @@ Two modules ship with the plugin:
 - **`checks/ribbon-badge.js`** — a worked example: one bell, a numeric badge (Persian digits
   normalised), the dropdown opening, mark-as-read decrementing the count, the centre page listing
   rows, plus frame probes and a trace dump when something fails.
+- **`checks/uci-ribbon-probe.js`** — asks `GetClientMetadata` for one form's command bar N times and
+  counts the answers that hold your button. Run it when a ribbon button shows in classic (or in
+  `entity-ribbon`) but not in the Unified Interface ([FIELD-NOTES §17](FIELD-NOTES.md)). Inputs come from
+  the environment: `UITEST_ENTITY`, `UITEST_FORM_ID`, `UITEST_BUTTON_ID` (text only your button's
+  definition contains, e.g. `abc.account.MyButton.Button`), optional `UITEST_APP_ID` (defaults to `-App`)
+  and `UITEST_PROBE_COUNT` (default 9).
+  ```powershell
+  $env:UITEST_ENTITY = 'account'; $env:UITEST_FORM_ID = '<main form id>'; $env:UITEST_BUTTON_ID = 'abc.account.MyButton.Button'
+  powershell -ExecutionPolicy Bypass -File .\uitest\d365-uitest.ps1 -Check checks\uci-ribbon-probe.js -App <appid>
+  ```
 
 ## Habits that pay for themselves
 

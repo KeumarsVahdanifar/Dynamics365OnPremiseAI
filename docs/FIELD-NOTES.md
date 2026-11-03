@@ -369,6 +369,49 @@ it. A `like` on the memo column finds one:
   it as solution components, activated, and fired. `iscrmuiworkflow` cannot be set on create or update
   (`IsValidForCreate` false), and CRM gave both of them `true`.
 
+### Custom actions (category 3) without the designer
+
+An action is a `workflow` record too: `category` `3`, `type` `1`, `mode` `0`, `scope` `4`, `runas` `1`
+(calling user), `primaryentity` the bound table (or `none` for a global action), plus the XAML. Verified
+on 9.1, created through the SDK and called from both clients:
+
+- **The message name is `<prefix>_<uniquename>`.** Give `uniquename` without a prefix and create with
+  `CreateRequest.Parameters['SolutionUniqueName']`; the solution's publisher supplies the prefix
+  (`MyAction` in an `abc` solution became the message `abc_MyAction`). Activation (`setstate` 1/2)
+  registers the `sdkmessage`; check it exists afterwards.
+- **Arguments live in `<x:Members>`**: `InputEntities` and `CreatedEntities` as usual, a bound action's
+  `Target` with `ArgumentTargetAttribute True` and `ArgumentEntityAttribute <table>`, and each output as
+  `<x:Property Name="IsSuccess" Type="OutArgument(x:Boolean)">` with
+  `ArgumentDirectionAttribute Value="Output"`. The Web API returns exactly these names.
+- **Handing a custom step's outputs to the action's outputs:** the step writes to workflow variables
+  (`[CustomActivityStep1IsSuccess_localParameter]`), then one `Sequence` per output does
+  `EvaluateExpression` `SelectFirstNonNull` on the variable and an `Assign`. The value expression that
+  worked: `[CBool(v)]` for `x:Boolean`, `[DirectCast(v, System.String)]` for `x:String` (an empty
+  string from the step came back as `""`). The designer itself writes `[v.ToString()]` for string
+  constants; copy the rest of the shape from an activated action of the org.
+- **Calling a bound action from script:** `POST <clientUrl>/api/data/v9.0/<entityset>(<id>)/Microsoft.Dynamics.CRM.abc_MyAction`
+  with body `{}` and the usual OData headers. The answer is one JSON object with the output names as
+  properties. Plain `XMLHttpRequest` worked the same in the Unified Interface and the classic client.
+- **A missing target never reaches your step.** Calling a bound action with an id that does not exist
+  fails with `<table> With Id = <guid> Does Not Exist` (`0x80040217`) before the first step runs, so a
+  `try/catch` inside a custom step cannot turn it into an output.
+- `istransacted` (the designer's *Enable rollback*) is an ordinary column: deactivate, update, activate.
+
+### Changing a custom workflow step's inputs or outputs
+
+CRM reads a step type's parameters once, when the `plugintype` is **created**, and keeps them in
+`customworkflowactivityinfo` (not writable). Verified: after adding an `[Output("Error Details")]` and
+updating the assembly, the stored info still listed only the old outputs. Delete and create the type
+again (same type name; reusing its id worked), which stored the new list:
+
+1. Park every process whose `xaml` contains the type name, so nothing references the type while it is
+   gone: deactivate it and replace the body with an empty `<mxswa:Workflow></mxswa:Workflow>`.
+2. Delete the `plugintype`, create it again, then write the processes' new XAML and activate them.
+
+`plugintype.description` holds at most **256** characters: a longer one fails the create with *"The
+length of the 'description' attribute of the 'plugintype' entity exceeded the maximum allowed length
+of '256'"*, and at that point the old type is already gone, so check the length before step 2.
+
 ---
 
 ## 9. Editing forms
@@ -548,6 +591,26 @@ work reported success, it succeeded. Do not retry blindly and double-apply write
   OR'd in. This is the single most common cause of "why didn't my sync pick that record up".
 - `statecode` conventions: `0 = Active`, `1 = Inactive` for most custom entities, but confirm with
   `optionsets <entity>` rather than assuming.
+- **JSON for an external API from a step, without shipping a JSON library:** the framework's
+  `DataContractJsonSerializer` (references `System.Runtime.Serialization` and `System.Xml`). Verified
+  against a mock endpoint: `[DataMember(Name = "...", Order = n)]` writes the fields in that order,
+  non-ASCII text goes out as plain UTF-8 characters (not `\u` escapes), and a null member is written as
+  `"field":null`. Reading an answer into a class with `bool?` members tolerates missing fields.
+- **`WebException.ToString()` carries the real cause.** For a refused connection it read
+  `System.Net.WebException: Unable to connect to the remote server ---> System.Net.Sockets.SocketException: ...`,
+  with `ex.Status` `ConnectFailure`; `ex.Message` alone hides the inner exception. Put the whole
+  `ToString()` (plus the HTTP status and raw body when `ex.Response` is set) where a developer can read it.
+- **Running step or plugin code from PowerShell against a live org** (with the tool's connection, section
+  14): load your DLL from its bytes, `[Reflection.Assembly]::Load([IO.File]::ReadAllBytes($dll))`. An
+  MSBuild output folder also holds the CRM SDK DLLs it was built against; a `LoadFrom($dll)` binds your
+  code to that copy, and passing the tool's `CrmServiceClient` then fails with *"Cannot convert ...
+  CrmServiceClient ... to type Microsoft.Xrm.Sdk.IOrganizationService"*. A `TcpListener` on `127.0.0.1`
+  with canned answers stands in for the remote API, so every failure path can be exercised without
+  calling the real service.
+- **Is the deployed assembly really this source?** Compare the bytes of your project's own build output
+  with `pluginassembly.content` (base64). With `<Deterministic>true</Deterministic>` they were identical.
+  A rebuild of the same source into another folder had the same length but different bytes: the DLL
+  embeds the path of its `.pdb`.
 
 ---
 
@@ -616,6 +679,35 @@ Read the org's own merged ribbon rather than guessing: the only tabs whose ids c
   `Mscrm.HomepageGrid...`) do work and reach every form and grid - but they put your button on every
   entity's command bar, which is rarely what anyone wants.
 
+### Entity ribbons: the Unified Interface serves its own prepared copy
+
+An entity's `RibbonDiffXml` is written the same way: put the table in a temporary unmanaged solution
+(`AddSolutionComponent` with `DoNotIncludeSubcomponents = true`), export it, edit
+`<Entity><RibbonDiffXml>` in `customizations.xml`, import with overwrite, publish the table. What
+happened on 9.1 when the script then deleted the temporary solution **right after** the import:
+
+- `entity-ribbon` and the classic web client showed the new button at once.
+- The Unified Interface never did. Its command bar comes from `GetClientMetadata` (the form query with
+  `MetadataNames: ["{\"KeepOnly\":[\"ribbon\"]}"]`), and 0 of 18 answers contained the button. Neither
+  publishing the table nor publishing every app that shows it changed that, although each app publish
+  ran `AppModuleMetadataOperation` system jobs (`asyncoperation` type 72) that succeeded.
+- **Importing again and keeping the temporary solution for about a minute before deleting it fixed it:
+  12 of 12 answers had the button, and it rendered.** Keep the solution until a probe shows the button.
+- The prepared copies sit in internal tables: `ribbonclientmetadata` (ribbon JSON per table and solution;
+  *"The 'RetrieveMultiple' method does not support entities of type 'ribbonclientmetadata'"*) and the
+  queue `ribbonmetadatatoprocess` (readable, but no row for the import was ever seen).
+
+**Probe it** with `uitest/checks/uci-ribbon-probe.js` ([UI-TESTING.md](UI-TESTING.md)). It sends that
+query from the signed-in page N times and counts the answers holding your button id; front ends answer
+in turn, so a stale server would show as a share. The SDK route is closed: `OrganizationRequest
+("GetClientMetadata")` with the query as a string fails with *"Input field type 'String' does not match
+expected type 'MetadataQuery'"*.
+
+**A command that needs a library first:** list it as an earlier action of the same command,
+`<JavaScriptFunction FunctionName="isNaN" Library="$webresource:abc_/lib/jquery.js" />`, before your own
+function. With jQuery and a dialog library chained this way, a button worked on every form of the table
+in both clients, including forms that do not load those libraries themselves.
+
 ### `EnableRule` is the only "run script on every page" hook on 9.1
 
 There is no global script event. A `<CustomRule>` `EnableRule` on a **visible** application-ribbon
@@ -673,6 +765,14 @@ section 4).
 Adding a form library also fails until the web resource exists - *"The dependent component ... does
 not exist"*. Upload and publish web resources **first**, then reference them from `formxml`.
 
+**The Quick Find view of a newly created table refuses every update.** On a table created through the
+SDK, `Update` of its `querytype` 4 `savedquery` failed with `0x80040216` *"An unexpected error
+occurred"*: with new XML, with the unchanged XML it already had, and after publishing the table. The
+table's five other generated views updated fine. Renaming it with `SetLocLabelsRequest` on `name`
+worked, so keep its generated definition and set only the name. The generated Lookup view
+(`querytype` 64) uses `<grid name="<plural>" ... preview="0"><row name="<table>" ...>` instead of
+`resultset` / `result`; keep those names when you rewrite its `layoutxml`.
+
 ## 21. Persian / non-ASCII labels: it works, and how to be sure
 
 Round-tripped intact on 9.1 for entity display names, attribute display names, option-set labels,
@@ -709,6 +809,14 @@ guessing is expensive. `uitest/` drives a real browser against the org - see
 Two lessons worth keeping: **never swallow a click error** in a test - an intercepted click looks
 exactly like a broken feature - and put a **trace ring buffer on `window.top`** in the code under
 test so the runner can read back what actually ran.
+
+**Test a button's dialogs without running its action.** When the action has side effects (it calls an
+outside service, sends an SMS), answer its Web API call in the browser instead:
+`page.route(/Microsoft\.Dynamics\.CRM\.abc_MyAction/, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ IsSuccess: false, Message: '...' }) }))`.
+Install one route before the first click and set its answer per scenario (success, refusal, a `500` with
+`{ "error": { "message": "..." } }`), and abort anything you did not plan for. This drove the same
+dialogs in the Unified Interface and the classic client. Right after a publish, the first Unified
+Interface form load once stayed on its loading skeleton for over 40 seconds; a re-run passed.
 
 ---
 

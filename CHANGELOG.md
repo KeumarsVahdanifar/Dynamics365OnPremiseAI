@@ -5,6 +5,32 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.6
+
+### Added
+
+- **`uitest/checks/uci-ribbon-probe.js`** ([UI-TESTING.md](docs/UI-TESTING.md)): asks `GetClientMetadata`
+  for one form's command bar N times and counts the answers that contain a given button. Verified on a
+  live org: 6 of 6 for a deployed button, 0 of 3 for an id that does not exist.
+
+### Documentation
+
+- **Entity ribbons and the Unified Interface** ([FIELD-NOTES §17](docs/FIELD-NOTES.md)): an entity ribbon
+  imported through a temporary solution that is deleted right away reaches `entity-ribbon` and the
+  classic client but never the Unified Interface; keep the solution about a minute. Also chaining
+  libraries before a command's function with `isNaN` actions.
+- **Custom actions without the designer, and changing a custom step's outputs**
+  ([FIELD-NOTES §8](docs/FIELD-NOTES.md)): message name = prefix + unique name, output arguments and
+  their assignment from a step, the bound Web API call, a missing target failing before any step, and
+  recreating a step type (its parameters are stored once; `description` max 256 characters).
+- **C# / plugin** ([FIELD-NOTES §15](docs/FIELD-NOTES.md)): JSON with `DataContractJsonSerializer`,
+  `WebException.ToString()`, loading your DLL from bytes when testing it from PowerShell, and proving the
+  deployed assembly is your source.
+- **Views** ([FIELD-NOTES §20](docs/FIELD-NOTES.md)): a new table's Quick Find view refuses every update
+  (rename it with `SetLocLabels`); the Lookup view's own grid names.
+- **UI tests** ([FIELD-NOTES §22](docs/FIELD-NOTES.md)): answer an action's Web API call with
+  `page.route` to test a button's dialogs without running the action.
+
 ## 2.2.5
 
 ### Documentation
