@@ -5,6 +5,21 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.7
+
+### Fixed
+
+- **Date Only values in `fetch` / `query` / `retrieve` output were a day early when read as UTC.** The SDK
+  returns them with `Kind = Unspecified` and PowerShell's JSON writer took that as the PC's local time, so on
+  a PC east of UTC a value shown as 26/09/2026 came out as `/Date(...)/` = 2026-09-25T20:30Z. They (and
+  Time-Zone Independent values) are now written as the stored value in UTC: 2026-09-26T00:00Z. UserLocal
+  values were already right and are unchanged. A script that added the PC's offset back must stop doing so.
+
+### Documentation
+
+- **Dates** ([FIELD-NOTES §27](docs/FIELD-NOTES.md)): behaviour vs format (a "date only" column can be
+  UserLocal), what `Kind` each behaviour comes back with, and comparing a UserLocal date with a Date Only one.
+
 ## 2.2.6
 
 ### Added

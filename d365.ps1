@@ -647,6 +647,10 @@ function Row($r) {
         'OptionSetValue'  { $o[$k] = $v.Value }
         'Money'           { $o[$k] = $v.Value }
         'OptionSetValueCollection' { $o[$k] = @($v | ForEach-Object { $_.Value }) }   # multi-select
+        # Date Only and Time-Zone Independent values arrive with Kind Unspecified, and ConvertTo-Json would
+        # read them as this PC's local time: /Date(ms)/ moved by the PC's UTC offset (FIELD-NOTES 27). Mark
+        # them UTC so /Date(ms)/ is the stored date and time. User Local values are already UTC.
+        'DateTime'        { $o[$k] = if ($v.Kind -eq [DateTimeKind]::Unspecified) { [DateTime]::SpecifyKind($v, [DateTimeKind]::Utc) } else { $v } }
         default           { $o[$k] = $v }
       }
     }

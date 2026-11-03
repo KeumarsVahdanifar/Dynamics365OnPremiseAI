@@ -1046,3 +1046,31 @@ This query shows the pairs:
 - **The stock `productassociation` views have no state filter.** None of the five system views filters
   `statecode`, so those views (Advanced Find's default included) list Inactive lines next to live ones. Anything
   that reads the table directly has to filter `statecode` itself.
+
+---
+
+## 27. Dates: behaviour is not format, and what the SDK hands back
+
+- **A date column has a behaviour and a format, and they are independent.** `DateTimeBehavior` is
+  UserLocal, DateOnly or TimeZoneIndependent; `Format` is DateOnly or DateAndTime. A column that shows only a
+  date can still be **UserLocal**. Seen on one table: two "start/end date" columns were UserLocal + format
+  DateOnly, while the table's other date columns were DateOnly + DateOnly. Read the behaviour, not the
+  format:
+
+  ```powershell
+  $req = New-Object Microsoft.Xrm.Sdk.Messages.RetrieveAttributeRequest
+  $req.EntityLogicalName = 'abc_contract'; $req.LogicalName = 'abc_enddate'
+  $m = $svc.Execute($req).AttributeMetadata
+  "$($m.DateTimeBehavior.Value) / $($m.Format)"    # e.g. UserLocal / DateOnly
+  ```
+
+- **What comes back:** a UserLocal value is a UTC instant (`Kind = Utc`); a DateOnly value is midnight
+  with `Kind = Unspecified`. Verified through `fetch`: before 2.2.7 the DateOnly values came out moved by
+  the PC's UTC offset and the UserLocal ones did not, which is exactly the difference in `Kind` (see the
+  CHANGELOG entry for 2.2.7: `fetch` now writes Unspecified values as UTC, so `/Date(ms)/` is the stored
+  value).
+- **Comparing them in code:** a UserLocal date typed as midnight in a zone east of UTC is an instant on the
+  previous UTC day, so `userLocalValue.Date` and a DateOnly value can disagree by one day at the edges of
+  a range. Convert the UserLocal value to the organization's time zone first
+  (`TimeZoneInfo.ConvertTimeFromUtc(value, zone).Date`); the same conversion leaves a DateOnly midnight on its
+  own day in such a zone, so one rule reads both.
