@@ -1167,3 +1167,43 @@ Microsoft, and cumulative updates replace the files.
   get. Install the route only **after** sign-in: `route.fetch()` follows redirects, so routing during the
   ADFS round-trip serves the sign-in page under the `main.aspx` URL and breaks its relative form post.
   Use `route.fetch({ maxRedirects: 0 })` and pass non-200 answers through.
+
+### More from a full test pass (2.2.9)
+
+- **Persian is not right-to-left in this client.** `get_isRTL()` is `_rtlLangList.indexOf(languageId) >= 0` with
+  `_rtlLangList = [1037, 1025]` (Hebrew, Arabic) in `uclient/scripts/app.js`. A user whose UI language is 1065
+  gets a **left-to-right** shell with Persian strings; the server may still send `__preload.isRTL = true`, so
+  anything you build that follows `__preload.isRTL` will disagree with the shell. To *test* a mirrored shell,
+  rewrite the list in the test browser (Playwright: block the service worker with
+  `serviceWorkers: 'block'`, route `uclient/scripts/app.js` and replace the array) and set
+  `UserContext[0].UserSettings.LanguageId` in the `GetClientMetadata … UserContext` response; changing only the
+  preload flag does nothing.
+- **The business process flow uses the org Theme's process colour** (Settings > Themes), not the client's
+  blues: the process-name tag, the stage indicators, the completed line and the scroll buttons. A re-theme
+  that maps "the blues" must also map that hue.
+- **Header fields alternate with separators:** `#headerControlsList_N > div` is field, 1 px separator (a div
+  with one empty child), field, … Style fields with `> div:has(> div + div)`, hide separators with
+  `> div:has(> div:only-child:empty)`.
+- **The apps page (`pagetype=apps`) is a same-origin iframe `#AppLandingPage`** built from inline styles with
+  stable ids (`SearchAndCommandBar`, `app-search-input`, `AppModuleTileSec_*`, `AppDetailsSec_*`,
+  `app-section-header_*`). Theme it by adding a stylesheet to the frame's document; the main page's CSS never
+  reaches it.
+- **Finding component ids without clicking everything:** the bundle declares them as literals. 
+  `cat uclient/scripts/*.js | grep -oE '[^A-Za-z]id:"[A-Za-z][A-Za-z0-9_-]{3,45}"'` lists ~600, among them
+  `lookupDialogRoot/Container/SaveBtn/CancelBtnFooter`, `quickCreateSaveAndCloseBtn/SaveAndNewBtn/CancelBtn`,
+  `quickCreateTabContainer`, `toastNotificationRoot`, `popupNotificationRoot`, `defaultDialogChrome*`,
+  `global-notification-*`, `categorized-search-*`, `headerFieldsFlyoutContainer`.
+- **UI that can be shown without writing data** (good for UI tests): `formContext.ui.setFormNotification`,
+  `control.setNotification`, `Xrm.App.addGlobalNotification`, `Xrm.Utility.lookupObjects` (opens the lookup
+  records dialog), `Xrm.Navigation.openAlertDialog / openConfirmDialog / openErrorDialog`,
+  `Xrm.Utility.showProgressIndicator`. Guard real forms with an OnSave handler that calls
+  `getEventArgs().preventDefault()` (autosave goes through it too) and accept only `beforeunload` prompts.
+- **Fonts:** a replacement face changes text width and line boxes the client was laid out for (Segoe UI).
+  Override the metrics in `@font-face` to Segoe UI's (`ascent-override: 108%; descent-override: 25%;
+  line-gap-override: 0%`) so line boxes stay; measure widths before choosing (14 px samples: Inter ≈ +8 %
+  wider than Segoe UI and truncated 200 px site-map labels; Vazirmatn ≈ 4–7 % narrower, Latin and Persian).
+- **Grid selection:** a selected row is `.wj-row[aria-selected="true"]`; `.wj-state-selected` marks only the
+  focused cell, so styling it paints a stray square in the first cell.
+- **The test server drops connections now and then** (`connect ETIMEDOUT` for a minute). A Playwright
+  `route.fetch()` without a `try/catch` turns that into an unhandled rejection that ends the run; fall back to
+  `route.continue()` and retry navigations.

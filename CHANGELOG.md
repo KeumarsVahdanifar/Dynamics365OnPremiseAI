@@ -5,6 +5,15 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.9
+
+### Documentation
+
+- **Unified Interface, continued** ([FIELD-NOTES §28](docs/FIELD-NOTES.md)): Persian (1065) is not in the client's
+  right-to-left list, how to test a mirrored shell anyway, the BPF's theme colour, header-field separators, the
+  apps page iframe, finding component ids in the bundle, UI that can be shown without writing data, font metric
+  overrides and width, grid selection classes, and surviving dropped connections in Playwright.
+
 ## 2.2.8
 
 ### Documentation
