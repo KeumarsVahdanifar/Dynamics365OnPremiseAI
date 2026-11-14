@@ -1074,3 +1074,96 @@ This query shows the pairs:
   a range. Convert the UserLocal value to the organization's time zone first
   (`TimeZoneInfo.ConvertTimeFromUtc(value, zone).Date`); the same conversion leaves a DateOnly midnight on its
   own day in such a zone, so one rule reads both.
+
+---
+
+## 28. Restyling the Unified Interface (9.1 on-prem client 1.4.x)
+
+Verified on a 9.1.34.5 server (UCI client 1.4.9331-v91onpremise) while building a full re-theme that
+touches one server file. Everything below is about the browser client; none of it is supported by
+Microsoft, and cumulative updates replace the files.
+
+### Where the shell comes from
+
+- The whole client is `<CRMWeb>\uclient` (~400 files, ~60 MB: `main.htm`, `scripts\` webpack chunks,
+  `resources\styles\Styles.css`, `sw.js`). `nga\` is the old Interactive Service Hub and `_static\` the
+  classic client - neither is used by UCI.
+- `main.aspx?appid=…` is answered with **`uclient\main.htm` itself**, rewritten on the way out
+  (`web.config` routes `main.htm` through `Handlers\UnifiedClientCDNHandler.ashx`): the `//*preload*`
+  comment becomes `var __preload = { org, orgId, userId, serverVersion, isRTL, localizedStrings … }`, the
+  `manifest` attribute and the favicon/apple-touch-icon `<link>` lines are removed, everything else is
+  served as written. So **one `<script src>` line added to `main.htm` runs on every UCI page of every org on
+  that server** - put it after the preload block (before `<!-- css -->`) and `window.__preload.org` is
+  already set, which is how you limit a change to one org. Keep the file's UTF-8 BOM and CRLF.
+- `uclient\web.config` sets `DisableCache` for the folder root and one-year caching for `scripts\` and
+  `resources\`; a sub-folder you add (e.g. `uclient\yourfolder\`) inherits "revalidate every load", so
+  edits show on a normal refresh.
+- The service worker `/uclient/sw.js?gcm=true` is registered with scope `/` and controls UCI pages, but it
+  only answers `uclient/scripts/*` (and `/nga/main.htm`) from its cache; `main.aspx` goes to the network
+  unless the org runs the offline "frozen" mode. A changed `main.htm` therefore reaches users on reload.
+  If it doesn't, the server is holding the old copy: recycle `CRMAppPool`.
+- Flipping `isRTL` in the preload does **not** mirror the shell; direction follows the user's UI language.
+
+### How it is styled (and why class names are useless)
+
+- Several systems at once: **Fela** atomic classes (`<style id="stylesheet" data-fela-stylesheet>`, names
+  like `ae`, `qy`, regenerated per build), Fabric **merge-styles** (`<style data-merge-styles>`, filled
+  through `CSSStyleSheet.insertRule`, so `textContent` is empty), Fabric **load-themed-styles**, plain
+  control CSS (Wijmo grid etc.), `Styles.css`, and per-control web resource CSS
+  (`/{stamp}/webresources/cc_MscrmControls.*/css/*.css`, same origin).
+- Target **`data-id`, `id` and ARIA roles**; they are stable. Fela rules have specificity (0,1,0), so a
+  rule prefixed with a class on `<html>` wins without `!important` unless inline styles are involved.
+- Re-theming colours without knowing selectors works by **rewriting the declarations themselves**: walk
+  `document.styleSheets` (all same-origin), patch `CSSStyleSheet.prototype.insertRule` before the client
+  scripts run, observe `<head>` for new `<style>`/`<link>` nodes, and `setProperty()` each colour
+  declaration to a `var(--token)` chosen from property + lightness + hue (the client's blues are hue
+  190-240). One scan is a few thousand rules and takes milliseconds; theme switches then only change the
+  custom properties, and a dark theme covers controls you never styled. Fonts can be swapped the same way
+  (`font-family` containing "Segoe UI" - the client fakes weights with `SegoeUI-Semibold`-style family
+  names, so map those to a `font-weight`; leave `CrmMDL2`/`FabricMDL2Icons`/`symbolFont` alone). Skip
+  rules under `-ms-high-contrast`/`forced-colors` (Chrome lists them as `not all`).
+
+### Stable hooks that exist on 9.1
+
+| Area | Hook |
+|---|---|
+| top bar | `[data-id="topBar"]`, `[data-id="dynamics-button"] > span` (the "Dynamics 365" text), `[data-id="appBreadCrumb"]`, `[data-id="appBreadCrumbText"]`; launchers are `button[data-id="searchLauncher"]`, `quickCreateLauncher`, … inside `ul[data-id="CommandBar"]` |
+| site map | `[data-id="navbar-container"]`, `[data-id="navbutton"]`, `li[data-id^="sitemap-entity-"][aria-selected="true"]` (its first empty `div > div > div` is the selection bar), group titles `[data-id^="sitemap-sitemapAreaGroup-"]`, `#areaSwitcherId` |
+| command bars | `ul[data-id="CommandBar"] > li[role="menuitem"] > button`; the **button** carries `data-id="<table>` + `NoRelationship` + `Form` / `HomePageGrid` / `SubGridStandard` + `Mscrm.….<Command>"` joined by pipes (e.g. ending `.NewRecord`, `.Save`), the `li` carries the id; icons are `<img src="/uclient/resources/images/*.svg">` |
+| record header | `[data-id="form-header"]`, `[data-id="headerContainer"]`, `[data-id="entityImageContainer"]`, `h1[data-id="header_title"]`, `[data-id="entity_name_span"]`, `[data-id="form-selector"]`, `#headerControlsList_0`, `[data-id="header_overflowButton"]` |
+| tabs / sections | `ul[role="tablist"] > li[role="tab"][aria-selected]` (first `div[aria-hidden]` child = underline), `[role="tabpanel"] section[data-id]`, `h2[data-id^="form-sectionHeader-"]` |
+| fields | `[data-id="<column>-FieldSectionItemContainer"]`, `label[id$="-field-label"]`, `[data-id$="-required-icon"]`, `[data-id$="-locked-icon"]`, lookup options `[data-id$="_resultsContainer"][role="option"]` |
+| footer | `[data-id="form-footer"] #footerWrapper`, `[data-id="edit-form-save-btn"]` |
+| lists | `h1[data-id^="ViewSelector_"]`, `[data-id="data-set-quickFind-container"]`, `input[data-id^="quickFind_text"]`, `#JumpBarItemsList`, `[data-id^="dataSetRoot_"]`, `[data-id="data-set-body-container"]` |
+| timeline | `[data-id="notescontrol"]`, `#timeline_search_container`, `#create_note_container` |
+| dashboards | `#DashboardView`, `#DashboardScrollView`, components `[data-id^="MscrmControls.Containers.DashboardControl-"][data-id$="stream"]` |
+| flyouts | every flyout root has a `data-id` containing `__flyoutRootNode` (`#__flyoutRootNode` for command menus, `<column>.fieldControl` + `__flyoutRootNode_SimpleLookupControlFlyout` for lookups); the panel is `[data-id*="__flyoutRootNode"] > div > div` |
+| dialogs | `[role="dialog"][id^="dialogView_"]`, backdrop `[id^="DialogContainer__"][id$="_popupContainer"]` (no z-index - stacking is DOM order, so anything you append to `<body>` later sits **above** it), `button[data-id="ok_id"]` / `cancel_id`, `[data-id="dialogCloseIconButton"]` |
+| web resources | `iframe[id^="WebResource_"]` |
+
+### Traps
+
+- **The grid is Wijmo FlexGrid.** Cells are absolutely positioned with inline `top/left/width/height` and
+  an inline `background: rgb(255, 255, 255)`, so row height and padding cannot change; colours need
+  `!important`. The visible header cells are `.wj-cell.wj-header`; the `role="columnheader"` cells are an
+  invisible accessibility overlay (`opacity: 0`) - styling them does nothing.
+- **Read-only text inputs paint their text with `-webkit-text-fill-color`**, not `color`.
+- **Editable field inputs have no background at all**: under `color-scheme: dark` the browser's own grey
+  field colour appears. Give them `background-color: transparent`.
+- The boot spinner `#error-app-loading-indicator` gets `.hideErrorBlock` only late, sometimes after the
+  first page has rendered; a full-screen splash keyed on it covers the app - key it on "shell rendered"
+  (`[data-id="topBar"]` exists) instead. `.centered` means the error popup is showing.
+- `body.noOutline` is the client's own mouse/keyboard focus switch; a global `:focus-visible` rule draws
+  boxes on elements the client focuses programmatically (tabs, view selector).
+- In the main window `Xrm.Navigation.openForm`, `Xrm.WebApi.retrieveMultipleRecords` (`contains()` with
+  a URL-encoded non-ASCII value works) and `Xrm.Utility.getEntityMetadata` are available to scripts the
+  shell loads; `getEntityMetadata(...).DisplayName` comes back as a label object, not a string.
+
+### Previewing a shell change without deploying it
+
+- **Console:** CSS + JS (fonts as data: URIs) in one file pasted into DevTools on a loaded page. Pages
+  after a full reload need it pasted again.
+- **Playwright:** route the `main.aspx` *document* request and insert the same line the server file would
+  get. Install the route only **after** sign-in: `route.fetch()` follows redirects, so routing during the
+  ADFS round-trip serves the sign-in page under the `main.aspx` URL and breaks its relative form post.
+  Use `route.fetch({ maxRedirects: 0 })` and pass non-200 answers through.

@@ -5,6 +5,17 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.8
+
+### Documentation
+
+- **Restyling the Unified Interface** ([FIELD-NOTES §28](docs/FIELD-NOTES.md)): how `uclient\main.htm` is served
+  (one added `<script>` line runs on every UCI page; `__preload.org` limits it to one org), the service worker's
+  cache scope, the styling systems and why only `data-id`/role hooks are stable, a table of verified hooks
+  (top bar, site map, command bars, record header, tabs, sections, fields, lists, timeline, dashboards,
+  flyouts, dialogs), Wijmo grid and input traps, re-theming by rewriting stylesheet declarations, and
+  previewing a shell change from the console or Playwright without deploying.
+
 ## 2.2.7
 
 ### Fixed
