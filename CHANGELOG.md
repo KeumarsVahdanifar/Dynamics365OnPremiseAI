@@ -5,6 +5,15 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.10
+
+### Documentation
+
+- **Loading your own code on every Unified Interface page through a solution** ([FIELD-NOTES §28](docs/FIELD-NOTES.md)):
+  `Mscrm.GlobalTab.New.Controls._children` is the top bar, top-bar ribbon scripts run in the same-origin
+  `#ClientApiFrame_crm_header_global` iframe (reach the page through `window.top`), the web-resource layout inside
+  a solution zip, and why command-bar widths must never change (re-measure with a `resize` event).
+
 ## 2.2.9
 
 ### Documentation

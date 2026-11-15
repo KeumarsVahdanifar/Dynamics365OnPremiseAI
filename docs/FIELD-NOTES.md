@@ -1207,3 +1207,30 @@ Microsoft, and cumulative updates replace the files.
 - **The test server drops connections now and then** (`connect ETIMEDOUT` for a minute). A Playwright
   `route.fetch()` without a `try/catch` turns that into an unhandled rejection that ends the run; fall back to
   `route.continue()` and retry navigations.
+
+### Loading your own code on every page through a solution (2.2.10)
+
+No server file is needed to run a script on every Unified Interface page: an application-ribbon button
+in the top bar does it. What was verified on 9.1:
+
+- **`Mscrm.GlobalTab.New.Controls._children` renders in the UCI top bar**, next to search, quick create,
+  advanced find and settings. In the DOM it is an `li` in `[data-id="topBar"] ul[data-id="CommandBar"]`
+  whose `button` carries `data-id` = the ribbon `Button` `Id`, so CSS can hide or restyle that one button.
+  The display rule `<CommandClientTypeRule Type="Legacy" InvertResult="true" />` keeps it out of the
+  classic web client.
+- **Top-bar ribbon JavaScript does not run in the main window.** The client loads the libraries into a
+  same-origin helper iframe, `#ClientApiFrame_crm_header_global`, as ordinary
+  `<script src="/<org>/%7b<token>%7d/webresources/...">` tags, on page load, before any click. Code there
+  reaches the page through `window.top` (same origin), and `document.currentScript.src` gives the
+  versioned web-resource folder to load sibling files from (the token changes on every publish, so the
+  browser cache never serves stale files).
+- **Solution zip layout for web resources** (from an export): `customizations.xml` lists each one with
+  `<FileName>/WebResources/<name with everything except [A-Za-z0-9_] removed><ID IN UPPER CASE></FileName>`,
+  the zip entry holds the **raw file bytes** (not base64), and `[Content_Types].xml` has an `Override` per
+  entry with `application/octet-stream`. Root components are `<RootComponent type="61" schemaName="<web
+  resource name>" behavior="0" />`.
+- **Never change widths inside command bars.** The client measures its buttons to decide which ones go
+  into the overflow menu. Restyling paddings, gaps or fonts after that measurement leaves buttons
+  overlapping or clipped until the next resize. Restyle colours and heights only, and after anything that
+  changes text width (a font swap, density) dispatch `window.dispatchEvent(new Event('resize'))` a few
+  times (60 ms, 400 ms, 1.2 s, and after `document.fonts.ready`) so every command bar re-measures.
