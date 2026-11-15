@@ -5,6 +5,15 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.11
+
+### Documentation
+
+- **Managed application-ribbon solution, proven by a real import** ([FIELD-NOTES §28](docs/FIELD-NOTES.md)): a
+  script-built managed zip (web resources + one top-bar button) imports cleanly, its ribbon is merged as its own
+  layer next to the org's unmanaged buttons, the Unified Interface showed it without Publish All, and the button's
+  `CustomRule` runs on every page load.
+
 ## 2.2.10
 
 ### Documentation

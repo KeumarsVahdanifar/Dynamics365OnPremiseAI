@@ -1234,3 +1234,15 @@ in the top bar does it. What was verified on 9.1:
   overlapping or clipped until the next resize. Restyle colours and heights only, and after anything that
   changes text width (a font swap, density) dispatch `window.dispatchEvent(new Event('resize'))` a few
   times (60 ms, 400 ms, 1.2 s, and after `document.fonts.ready`) so every command bar re-measures.
+- **Proven end to end with a managed solution (2.2.11).** A solution holding only web resources plus a
+  root-level application `RibbonDiffXml` (one top-bar button whose enable rule is a `CustomRule`) was
+  imported as **managed** into a 9.1.34.5 org: import job 100 %, no errors. The package was written by a
+  script, not exported by CRM: the same `customizations.xml` as the unmanaged build, `<Managed>1</Managed>`
+  in `solution.xml`, root components `type="61"` per web resource and `type="50" schemaName=":RibbonDiffXml"`.
+  Afterwards `app-ribbon` had exactly one more `<Button>` and every existing unmanaged application-ribbon
+  button was still there, so a managed application ribbon is **merged** as its own layer (an unmanaged
+  import writes the org's single unmanaged layer instead, see §17). Fresh browser sessions about two
+  minutes after the import already showed the button, without Publish All. On every full page load, with
+  no click, the client put the library into `#ClientApiFrame_crm_header_global` and evaluated the
+  `CustomRule`, so the rule function works as a "run on every page" hook. Make it idempotent (it can run
+  again), always `return true`, and catch everything so the command bar is never affected.
