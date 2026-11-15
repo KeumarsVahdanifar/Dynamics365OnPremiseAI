@@ -5,6 +5,16 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.12
+
+### Documentation
+
+- **Custom help pages in the Unified Interface help pane** ([FIELD-NOTES §29](docs/FIELD-NOTES.md)): the
+  solution-aware `msdyn_helppage` table, which `msdyn_path` the «?» pane asks for on a list, form, dashboard or
+  any other page (keyed by the app unique name, one row per UI language), the `text/pphml` markup the pane keeps,
+  why list items need `<li><p>` and images an absolute `src` (a `data:` URI works), help:// links between pages, coachmark targets as CSS selectors, and right-to-left
+  text in a pane that is always laid out left to right.
+
 ## 2.2.11
 
 ### Documentation

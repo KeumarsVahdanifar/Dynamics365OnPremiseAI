@@ -1246,3 +1246,83 @@ in the top bar does it. What was verified on 9.1:
   no click, the client put the library into `#ClientApiFrame_crm_header_global` and evaluated the
   `CustomRule`, so the rule function works as a "run on every page" hook. Make it idempotent (it can run
   again), always `return true`, and catch everything so the command bar is never affected.
+
+---
+
+## 29. Custom help pages in the Unified Interface help pane
+
+Verified on a 9.1.34.5 server (UCI client 1.4.x) by writing about 90 pages through the SDK and opening every
+list, form and dashboard of a custom app in a real browser. No `pac`, no Power Platform admin centre: on-prem
+has everything needed.
+
+### Where the pages live
+
+- Table **`msdyn_helppage`** ("Help Page"), organization-owned and **solution-aware**: its solution component
+  type is the table's own type code (read it from `solutioncomponentdefinition` where
+  `primaryentityname = msdyn_helppage`; it was 10664 on the org tested). `AddSolutionComponentRequest` with that
+  type works, so help pages travel with a solution.
+- Columns: `msdyn_path`, `msdyn_locale` (LCID, int), `msdyn_contenttype` (`text/pphml`), `msdyn_content` (memo,
+  up to 1 MB), `msdyn_displayname`, `statecode`.
+- An org without any page has none: the table exists but is empty.
+
+### When the top-bar «?» opens the pane
+
+- The «?» button (`#helpLauncher`) opens the help pane instead of the help URL when the client feature is on
+  (it is on 9.1.34), `organization.globalhelpurlenabled = false` and `organization.iscontextualhelpenabled = true`
+  (and the browser is not IE). With no page for the screen the pane says "It's feeling a little empty here".
+- Users with **Write** on `msdyn_helppage` get the pane's edit mode (`userCanEditHelp` is a privilege check, not
+  an org setting). The pane's own save POSTs/PATCHes the same table. A script that redeploys pages will
+  overwrite pane edits - keep one source.
+
+### Which page the pane asks for
+
+`GET msdyn_helppages?$filter=msdyn_path eq '<path>' and msdyn_locale eq <user UI LCID> and statecode eq 0`, where
+`<path>` is built from the **app unique name** (not its id), so paths survive a solution import:
+
+| Screen | `msdyn_path` |
+|---|---|
+| a table's list (any view) | `CDS/Apps/<app>/Entities/<table>/Views/Default` |
+| a table's form (any form) | `CDS/Apps/<app>/Entities/<table>/Forms/Default` |
+| a system dashboard (the app home is usually one) | `CDS/Apps/<app>/Dashboards/<dashboard id, lowercase, no braces>` |
+| a table dashboard | `CDS/Apps/<app>/Entities/<table>/Dashboards/<id>` |
+| everything else (web resource pages, …) | `CDS/Apps/<app>/Default` |
+
+- **One row per UI language**: the pane only asks for the user's language. Users on English and on another
+  language need two rows with the same path.
+- Any other path (for example `CDS/Apps/<app>/Guides/Pipeline`) is a page no screen opens but a link can.
+
+### The markup (`text/pphml`)
+
+`<pphml><h1>title</h1> … </pphml>`. The parser keeps **only** `h1` (the title; the pane takes the page name
+from it when it saves), `p`, `strong`, `em`, `u`, `del`, `ul`/`ol`/`li`, `a href [target]`, `img src [alt title]`,
+`video src`, `collapsible title [collapsed="true|false"]` (or `details`/`summary`), `coachmark target` and
+`balloon target title details`. Tables, `h2`…, `br`, `div` and attributes such as `dir` or `style` are dropped.
+
+- **A list item must hold a paragraph: `<li><p>…</p></li>`.** With text straight in `<li>`, the bare text shows
+  but every link, bold run or coachmark inside it is dropped, and an item holding only a link renders as an
+  empty bullet. Paragraphs render inline elements fine.
+- `<a href="help://<msdyn_path>">` without `target` opens that help page **inside the pane** (back and home
+  buttons work).
+- Sections: `collapsible` with a `title`; set `collapsed` explicitly.
+- **Right-to-left text:** the pane's chrome is left-to-right in this build even for an RTL UI language, and no
+  `dir` survives the parser, but the editor sets `dir="rtl"` on every block whose text contains RTL letters, so
+  such lines are right-aligned. Still wrap each `p`/`h1` text in U+2067 … U+2069 (RLI … PDI): lines that start
+  with Latin text (a code, an English name) then keep their word order.
+### Images, links and coachmarks (checked in a real browser)
+
+- **`<img>` needs an absolute `src`.** A relative one (`WebResources/<name>`) is silently dropped when the page
+  loads: no element, no request. `https://…` and `data:image/svg+xml;base64,…` both render, scaled to the pane
+  width (about 300 px), so draw diagrams about 300 px wide or their text shrinks. A `data:` URI keeps the page the
+  same in every org after a solution import; an absolute URL carries one environment's address.
+- Links: `<a href="WebResources/<name>" target="_blank">` (relative) opens the file in a new tab;
+  `<a href="main.aspx?appname=<app>&amp;pagetype=entitylist&amp;etn=<table>" target="_top">` moves the app itself to
+  that page (an `entityrecord` URL without `id` opens a new-record form).
+- A `coachmark` or `balloon` link opens a Fluent beacon / teaching bubble in a new `.ms-Layer` next to its target.
+  Fluent's generated class names do not contain "Coachmark": a UI test should compare the `.ms-Layer` count before
+  and after the click and measure the new layer's distance to the target.
+- Targets that work as selectors: a field's container `[data-id="<attribute>"]` (only on the open tab), a tab
+  `[data-id="tablist-<tab name>"]`, the process bar
+  `[data-id="MscrmControls.Containers.ProcessBreadCrumb-processHeaderContainer"]`, a form command
+  `[data-id="<table>|NoRelationship|Form|<button id>"]`, a site-map item `[data-id="sitemap-entity-<subarea id>"]`
+  and the help button `#helpLauncher`.
+- The pane keeps its open/closed state while the user moves between pages and loads the new page's help itself.
