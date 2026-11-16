@@ -5,6 +5,21 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.14
+
+### Changed
+
+- **`import-solution` tells the truth about what is installed.** The banner now shows the file's version and
+  type and `Installed now: <version> (managed|unmanaged)`. It used to say "no existing solution of that name"
+  whenever the pre-import export failed, which is always the case for a **managed** solution (CRM cannot
+  export one). For a managed solution it now states there is no backup and how to go back.
+
+### Documentation
+
+- **Unified Interface restyling** ([FIELD-NOTES §28](docs/FIELD-NOTES.md)): a bottom margin on `#mainContent`
+  lets the client scroll the page up (record set navigator), form notification colours and their hooks, and a
+  verified managed upgrade that keeps the org's own edit of a customizable web resource.
+
 ## 2.2.13
 
 ### Documentation

@@ -1249,6 +1249,34 @@ in the top bar does it. What was verified on 9.1:
 
 ---
 
+### Page-panel margins, form notifications, managed upgrades (2.2.14)
+
+- **A bottom margin on `#mainContent` lets the client scroll the whole page.** `#mainContent` sits in a
+  flex row with the site map and is given that row's full height. A `margin-bottom` (for a "floating
+  panel" look) makes the row taller than its box by the margin. The row's `overflow: hidden` hides that,
+  but script can still scroll it. Opening the **record set navigator** (the list button left of Save on a
+  record opened from a grid, `#collapseExpandBtn_<n>`: an `id`, not a `data-id`) makes the client scroll
+  that row by exactly the margin. The form and its command bar then sit that much higher, partly under
+  the top bar, while the record list does not move. Take the gap out of the height
+  (`height: calc(100% - <gap>)` next to `margin-bottom: <gap>`) so that `scrollHeight == clientHeight`
+  and there is nothing to scroll. Checked: page top and command bar stay put when the navigator is
+  opened, used to change record, and closed.
+- **Form notification colours come from the stylesheet, on `[data-id="notificationList"] > li[role="alert"]`:**
+  INFO is pale yellow `#FFF4CE`, ERROR pale pink `#FDE7E9`. The message is a
+  `span[data-id="warningNotification"]` for every level. A dark theme that recolours only greys and blues
+  leaves these pale backgrounds under light text, so the message is unreadable. Map pale amber, green and
+  pink backgrounds to dark warning, success and danger tints, and their saturated text to the matching
+  foreground. Several notifications at once collapse into one "You have N notifications" row.
+- **A managed upgrade keeps the org's own edit of a web resource.** Version 1.0.1 of a managed solution
+  was imported (no overwrite) over 1.0.0, where one of its web resources (managed, but with "can be
+  customized" left on) had been edited and published in the org. The edited web resource kept the org's
+  content, unchanged to the byte, while every other web resource got the new version's content. That
+  makes a customizable settings file inside a managed solution a safe place for per-org settings.
+- **A managed solution cannot be exported**, so "export the installed version first" is impossible for it.
+  `import-solution` now reads what is installed and shows `Installed now: <version> (managed|unmanaged)`
+  in the banner. For a managed one it says there is no backup and how to go back: delete the solution,
+  then import the previous zip. Keep every managed zip you ship.
+
 ## 29. Custom help pages in the Unified Interface help pane
 
 Verified on a 9.1.34.5 server (UCI client 1.4.x) by writing about 90 pages through the SDK and opening every

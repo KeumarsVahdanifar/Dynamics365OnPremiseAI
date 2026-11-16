@@ -450,6 +450,19 @@ function Backup-OptionSet($spec) {
 
 # Read the solution unique name out of a zip without importing it, so the banner can name what is
 # about to be overwritten and we can export that solution first.
+function Peek-SolutionTag($zipPath, $tag) {   # first <tag>value</tag> of solution.xml in the zip, or $null
+  try {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $zip = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
+    try {
+      $entry = $zip.Entries | Where-Object { $_.Name -eq 'solution.xml' } | Select-Object -First 1
+      if (-not $entry) { return $null }
+      $sr = New-Object System.IO.StreamReader($entry.Open()); $text = $sr.ReadToEnd(); $sr.Close()
+      $m = [regex]::Match($text, "<$tag>([^<]+)</$tag>")
+      if ($m.Success) { return $m.Groups[1].Value } else { return $null }
+    } finally { $zip.Dispose() }
+  } catch { return $null }
+}
 function Peek-SolutionName($zipPath) {
   try {
     Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -475,7 +488,8 @@ function Peek-SolutionName($zipPath) {
     $backup       path returned by Save-Backup, or $null
     $irreversible $true for deletes and anything that drops data
 #>
-function Need-Yes($what, $details, $backup, $irreversible) {
+# $reverseNote (optional): says how to undo when "restore the backup" is not the answer (e.g. a managed solution).
+function Need-Yes($what, $details, $backup, $irreversible, $reverseNote) {
   $bar = '=' * 78
   Write-Host ''
   Write-Host $bar
@@ -495,10 +509,11 @@ function Need-Yes($what, $details, $backup, $irreversible) {
     foreach ($line in @($details)) { if ("$line".Trim()) { Write-Host "  $line" } }
   }
   Write-Host '  ----------------------------------------------------------------------------'
-  if ($irreversible) { Write-Host '  Reversible   : NO - this destroys data or schema. Read the lines above again.' }
+  if ($reverseNote)  { Write-Host "  Reversible   : $reverseNote" }
+  elseif ($irreversible) { Write-Host '  Reversible   : NO - this destroys data or schema. Read the lines above again.' }
   else               { Write-Host '  Reversible   : yes, from the backup below (restore <file> -Yes)' }
   if ($backup) { Write-Host "  Backup       : $backup" }
-  elseif (-not $irreversible) { Write-Host '  Backup       : (nothing existed to back up - this creates something new)' }
+  elseif (-not $irreversible -and -not $reverseNote) { Write-Host '  Backup       : (nothing existed to back up - this creates something new)' }
   Write-Host $bar
   if (-not $Yes) {
     Write-Host '  Nothing changed. Re-run the SAME command with  -Yes  to execute it.'
@@ -1223,15 +1238,29 @@ switch ($Command) {
     if (-not $Arg1) { throw "usage: import-solution <path.zip> [-Overwrite] -Yes" }
     if (-not (Test-Path $Arg1)) { throw "file not found: $Arg1" }
     $solName = Peek-SolutionName $Arg1
+    $fileVer = Peek-SolutionTag $Arg1 'Version'
+    $fileManaged = (Peek-SolutionTag $Arg1 'Managed') -eq '1'
+    # What is installed now. A MANAGED solution cannot be exported (CRM refuses), so it gets no backup:
+    # say so instead of claiming nothing exists.
+    $inst = $null
+    if ($solName) { $inst = Fetch "<fetch><entity name='solution'><attribute name='version'/><attribute name='ismanaged'/><filter><condition attribute='uniquename' operator='eq' value='$($solName -replace "'","''")'/></filter></entity></fetch>" | Select-Object -First 1 }
+    $instManaged = $inst -and [bool]$inst['ismanaged']
     $bk = $null
-    if ($solName) { $bk = Backup-Solution $solName }
+    if ($inst -and -not $instManaged) { $bk = Backup-Solution $solName }
+    $now = if (-not $inst) { 'not installed - the import creates it' } else { "$($inst['version']) ($(if ($instManaged) { 'managed' } else { 'unmanaged' }))" }
+    $note = if ($bk) { 'The organisation''s current version of that solution was exported first (see Backup).' }
+            elseif ($instManaged) { 'A managed solution cannot be exported, so there is no backup of the installed version.' }
+            elseif ($inst) { 'WARNING: the installed version could not be exported first.' }
+            else { 'Nothing of that name exists yet.' }
+    $rev = if ($instManaged) { 'keep the previous managed zip: to go back, delete the solution and import that zip (deleting also drops customisations made on its components)' } else { $null }
     Need-Yes "IMPORT SOLUTION into this organisation" `
              @("File            : $Arg1  ($([math]::Round((Get-Item $Arg1).Length / 1KB)) KB)",
-               "Solution        : $(if ($solName) { $solName } else { '(unique name not readable from the zip)' })",
+               "Solution        : $(if ($solName) { $solName } else { '(unique name not readable from the zip)' })  version $fileVer  $(if ($fileManaged) { 'managed' } else { 'unmanaged' })",
+               "Installed now   : $now",
                "Overwrite unmanaged customizations : $($Overwrite.IsPresent)",
                "An import can change tables, columns, forms, views, ribbons and site map in one step.",
-               "$(if ($bk) { 'The organisation''s current version of that solution was exported first (see Backup).' } else { 'No existing solution of that name was found to export first.' })") `
-             $bk $false
+               $note) `
+             $bk $false $rev
     $req = New-Object Microsoft.Crm.Sdk.Messages.ImportSolutionRequest
     $req.CustomizationFile = [System.IO.File]::ReadAllBytes($Arg1)
     # Re-importing an unmanaged solution over your own earlier work is a no-op for anything the
