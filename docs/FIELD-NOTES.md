@@ -1448,3 +1448,6 @@ from it when it saves), `p`, `strong`, `em`, `u`, `del`, `ul`/`ol`/`li`, `a href
 - Scope: the launcher does NOT filter by app, even with the flows added as app components; it filters by the roles in
   `processroleassignment` (`<DisplayConditions><Role Id="{...}" /></DisplayConditions>`). The three Microsoft sample
   flows (update_contact, make_contact_on_opportunity, after_meeting) are managed: deactivate them to hide them.
+- Removing one: take it out of the app's components first (`RemoveAppComponents`, then publish the app), SetState
+  0/1, then Delete the workflow: its type-9 form goes with it (no separate delete). Turn `IsVisibleInMobileClient`
+  back off afterwards if it was switched on only for the task flow.

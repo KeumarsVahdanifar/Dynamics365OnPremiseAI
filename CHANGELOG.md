@@ -5,6 +5,12 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.17
+
+### Documentation
+
+- [FIELD-NOTES §32](docs/FIELD-NOTES.md): removing a task flow (out of the app, deactivate, delete; its type-9 form is deleted with it).
+
 ## 2.2.16
 
 ### Documentation
