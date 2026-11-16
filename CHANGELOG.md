@@ -5,6 +5,12 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.15
+
+### Documentation
+
+- [FIELD-NOTES §32](docs/FIELD-NOTES.md): task flows in the 9.1 Unified Interface — launcher and openTaskFlow, the workflow + type-9 form structure built through the SDK, the mobile-client flag, role (not app) scoping, hiding the sample flows.
+
 ## 2.2.14
 
 ### Changed

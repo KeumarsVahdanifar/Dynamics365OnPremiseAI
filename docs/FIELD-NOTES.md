@@ -1397,3 +1397,20 @@ from it when it saves), `p`, `strong`, `em`, `u`, `del`, `ul`/`ol`/`li`, `a href
 - Unpublished form XML (RetrieveUnpublished) also carries labels of every installed language; compare published
   and unpublished forms after removing `<label ... languagecode="1065"/>`-style extra-language labels, or every
   form looks changed.
+
+## 32. Task flows in the Unified Interface (9.1.34 on-prem)
+
+- They work on desktop, not only on phones: the top bar has a «Task Flows» launcher (`data-lp-id="global-tbxMenuLauncher"`,
+  ✓ icon; hidden only offline) and `Xrm.Navigation.openTaskFlow(<uniquename>, { primaryEntityContext: { entityType, id } })`
+  opens one on a record in a side panel.
+- A task flow is a `workflow` (category 4, businessprocesstype 1, type 1, iscrmuiworkflow true, mode 0, scope 4) plus a
+  task-flow form (`systemform` type 9, its id in `workflow.formid`). Same GUIDs tie them: page = form tab =
+  `PageStep.pageLayoutId`; section header = form section = unbound `ControlStep` id; field step = form cell. XAML holds
+  only `EntityComposite > PageComposite` per page (`StageId`, `NextStageId`, `PageLayoutId`); fields live in
+  `clientdata`. Footer buttons are unbound controls `<tabId>_back` / `<tabId>_next`, class `{00ad73da-bd4d-49c6-88a8-2f4f4cad4a20}`.
+  Creating both through the SDK works (form first, then workflow, then SetState 1/2).
+- The table must be enabled for the mobile client (`IsVisibleInMobileClient`), else Create fails with "The following
+  entities are not enabled for Task flows".
+- Scope: the launcher does NOT filter by app, even with the flows added as app components; it filters by the roles in
+  `processroleassignment` (`<DisplayConditions><Role Id="{...}" /></DisplayConditions>`). The three Microsoft sample
+  flows (update_contact, make_contact_on_opportunity, after_meeting) are managed: deactivate them to hide them.
