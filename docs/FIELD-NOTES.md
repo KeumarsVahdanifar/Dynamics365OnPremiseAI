@@ -1326,3 +1326,31 @@ from it when it saves), `p`, `strong`, `em`, `u`, `del`, `ul`/`ol`/`li`, `a href
   `[data-id="<table>|NoRelationship|Form|<button id>"]`, a site-map item `[data-id="sitemap-entity-<subarea id>"]`
   and the help button `#helpLauncher`.
 - The pane keeps its open/closed state while the user moves between pages and loads the new page's help itself.
+
+## 30. Unified Interface icons drawn as empty boxes: the Fabric icon font's CDN
+
+- Many UCI icons (date picker calendar, chevrons, filter, "more") are glyphs of the `FabricMDL2Icons` fonts: the
+  family `FabricMDL2Icons` plus the subsets `FabricMDL2Icons-0` ... `FabricMDL2Icons-17`. The 9.1 client (and the shared
+  `cc_shared/office_ui_fabric_react` library) registers them with `initializeIcons()` from the hard-coded base
+  `https://spoprod-a.akamaihd.net/files/fabric/assets/icons/`; `FabricConfig` does not move it in this icons version.
+  When the browser cannot reach that host (DNS sends it to an internal address, a proxy blocks it, no internet) every
+  such icon is an empty box and pages wait on connection timeouts. CRM's own `CrmMDL2` and `D365Shell` fonts come from
+  the CRM server and are not affected.
+- Check: DevTools > Network for failed `fabric-icons-*.woff` requests, or `nslookup spoprod-a.akamaihd.net` from the
+  user's PC. `document.fonts.check()` is no proof either way: it returns false while any face of the family (also
+  an unused subset) is still unloaded; draw the glyph on a canvas or look at a screenshot instead.
+- File names in the 9.1.34 client: `fabric-icons-a13498cf.woff` (base) and `fabric-icons-0-467ee27f.woff` ...
+  `fabric-icons-17-0c4ed701.woff` (19 files, about 236 KB). The names carry a content hash, and the same files are on
+  `https://res-1.cdn.office.net/files/fabric-cdn-prod_20230815.002/assets/icons/`.
+- CRM-side fix, verified: a CSS web resource that declares the same 19 families with the files embedded as
+  `url(data:font/woff;base64,...)` (a web resource cannot be a .woff; the CSS is about 320 KB), with
+  `font-weight: normal; font-style: normal` like Fabric's own rules, linked into the main window after the client
+  has started. Of several `@font-face` rules with the same family and descriptors the browser uses the one defined
+  last, and Chromium does not load an earlier face once a later one covers the text: no request goes to the CDN and
+  the icons draw at once.
+- The link needs code that runs on every page in the main window, such as an application-ribbon enable rule (see
+  section 28). Build the CSS URL from that script's own `document.currentScript.src` (the version-stamped
+  `.../WebResources/` path, so it caches) and give the `<link>` an id so it is added once.
+- `main.aspx` refuses query parameters it does not know ("CRM Parameter Filter - Invalid parameter", error page),
+  so a test cannot switch a client-side mode with `&mymode=off`; set the mode through `localStorage` instead.
+- The lasting fix is the network: let clients resolve and reach the CDN host.

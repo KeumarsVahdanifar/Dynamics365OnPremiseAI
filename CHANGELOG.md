@@ -5,6 +5,14 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.13
+
+### Documentation
+
+- **Unified Interface icons drawn as empty boxes** ([FIELD-NOTES §30](docs/FIELD-NOTES.md)): the `FabricMDL2Icons`
+  fonts come from a hard-coded CDN host, how to see that it is unreachable, the 19 file names, and a verified
+  CRM-side fix (a CSS web resource with the same families embedded as data URIs, linked after the client starts;
+  the later `@font-face` wins and the dead host is never asked). Also: `main.aspx` refuses unknown query parameters.
 ## 2.2.12
 
 ### Documentation
