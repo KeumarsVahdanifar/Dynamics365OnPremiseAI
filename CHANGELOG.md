@@ -5,6 +5,12 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.16
+
+### Documentation
+
+- [FIELD-NOTES §28](docs/FIELD-NOTES.md) "Phones and tablets": the 9.1 web client has no phone layout (form factor 1, desktop shell narrowed), lists become cards (`entity_control-ListItem_`), the site map opens over the page, the top bar removes the app name from the DOM by its own measure (room you add is not counted, so let it shrink), the `:not([data-id="topBar"])` trap, `viewport-fit=cover` and safe areas, testing with Playwright device emulation.
+
 ## 2.2.15
 
 ### Documentation
