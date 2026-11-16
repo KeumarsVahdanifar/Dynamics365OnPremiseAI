@@ -1277,6 +1277,40 @@ in the top bar does it. What was verified on 9.1:
   in the banner. For a managed one it says there is no backup and how to go back: delete the solution,
   then import the previous zip. Keep every managed zip you ship.
 
+### Phones and tablets (2.2.16)
+
+Checked with Playwright device emulation (installed Chrome, `isMobile` + `hasTouch` + a phone or tablet user
+agent and pixel ratio) at 320, 412 and 863 px phones and 712 / 1138 px tablets, signed in through ADFS as usual.
+Playwright renders at 320 px without trouble; the headless Edge `--screenshot` command line cannot go that narrow.
+
+- **There is no phone layout.** In a mobile browser the 9.1 web client keeps its desktop shell and narrows it:
+  `Xrm.Utility.getGlobalContext().client.getFormFactor()` returns `1` and `getClient()` returns `"Web"`. In the
+  emulated browser `(pointer: coarse)` and `(hover: none)` match, so touch rules can key on those.
+- **Lists become cards on a narrow screen**, with no Wijmo grid (`.wj-row` does not exist):
+  `ul[data-id="entity_control-GridList"]` (role `grid`) > `li[data-id^="entity_control-ListItem_<record id>"]` (role
+  `row`) > `div[data-id^="entity_control-ListItemContainer_"]` (role `gridcell`). Clicking the container opens the
+  record. Dashboard list components draw the same cards.
+- **The site map:** on a 412 px phone it opens over the page from `[data-id="navbutton"]` (`aria-expanded="true"`),
+  and the client fills a child `div` of that button with the theme's accent colour. On a 712 px tablet the site map
+  is docked and its menu button sits inside it, not in the top bar.
+- **The top bar** (`[data-id="topBar"]`, `display: flex; justify-content: space-between`) has two children: the left
+  group (menu button, brand button, `a[data-id="appBreadCrumb"]` with the app name) and the right group (a block
+  holding `ul[data-id="CommandBar"]`). When its own items do not fit, the client **removes the app-name element from
+  the DOM** (it is not hidden), and the right-hand icons move into `OverflowButton` (⋮). On a phone only
+  `li#searchLauncher` and ⋮ are left. The client decides from the widths of its own items only:
+  - anything you add (padding, a wider brand) is not counted;
+  - reserving room for your own buttons with `padding-inline-start` on the right group made the client still show
+    the app name, and the bar overflowed until ⋮ was half off the screen.
+
+  Let the left group and the app name shrink instead (`min-width: 0; flex-shrink: 1` on both, and an ellipsis on
+  `[data-id="appBreadCrumbText"]`). Put `unicode-bidi: plaintext` on that text, or a right-to-left app name in a
+  left-to-right page loses its first word instead of its last.
+- **Trap: `:not([data-id="topBar"]) ul[data-id="CommandBar"]` does not exclude the top bar.** `<html>` itself
+  matches the `:not()`, so a rule meant for page command bars sizes the top-bar buttons too (they were 34 px tall at
+  `y = 4` in a 48 px bar, visibly off centre). Use `ul[data-id="CommandBar"]:not([data-id="topBar"] *)`.
+- `main.htm`'s viewport is `width=device-width, initial-scale=1.0, maximum-scale=2.0, viewport-fit=cover`.
+  Because of `viewport-fit=cover`, anything full-screen you add must pad itself with `env(safe-area-inset-*)`.
+
 ## 29. Custom help pages in the Unified Interface help pane
 
 Verified on a 9.1.34.5 server (UCI client 1.4.x) by writing about 90 pages through the SDK and opening every
