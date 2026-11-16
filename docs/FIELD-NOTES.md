@@ -1382,3 +1382,18 @@ from it when it saves), `p`, `strong`, `em`, `u`, `del`, `ul`/`ol`/`li`, `a href
 - `main.aspx` refuses query parameters it does not know ("CRM Parameter Filter - Invalid parameter", error page),
   so a test cannot switch a client-side mode with `&mymode=off`; set the mode through `localStorage` instead.
 - The lasting fix is the network: let clients resolve and reach the CDN host.
+
+## 31. Two traps met while adding background logic to a table with a business process flow
+
+- **FetchXML / QueryExpression `like` uses SQL LIKE:** `[` and `]` are a character class, so a marker such as
+  `[APP-TASK]%` never matches the text `[APP-TASK] ...`. Use a marker without brackets (`#APP-TASK`) or escape
+  `[` as `[[]`.
+- **A "stage to status" workflow can overwrite a background decision.** When a status field drives a BPF through a
+  background "status to stage" sync, and a workflow on the BPF table sets the status back when a stage is chosen,
+  a second background job that changes the status (here an automatic decision written seconds after create) can
+  lose: the sync read the old status, moved the stage, and the stage-to-status rule then wrote the old status over
+  the new one. Make stages that must not change the status refuse with a message (or check the current status)
+  instead of setting it. The race showed up in about one run in five.
+- Unpublished form XML (RetrieveUnpublished) also carries labels of every installed language; compare published
+  and unpublished forms after removing `<label ... languagecode="1065"/>`-style extra-language labels, or every
+  form looks changed.
