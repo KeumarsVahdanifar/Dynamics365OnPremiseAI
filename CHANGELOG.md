@@ -5,6 +5,12 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.18
+
+### Documentation
+
+- [FIELD-NOTES §28](docs/FIELD-NOTES.md) "Lookups": the classic lookup dialog (lookupinfo.aspx) from the Unified Interface — URL parameters, the double-encoded customFilter format, reading the selection back, Remove Value; PreSearch runs only on a search; polling Xrm.Page.ui.controls while a form loads breaks the form; lookup dropdown DOM; dialog promises; error dialog / quick create button ids.
+
 ## 2.2.17
 
 ### Documentation

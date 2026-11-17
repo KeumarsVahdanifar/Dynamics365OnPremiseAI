@@ -1311,6 +1311,59 @@ Playwright renders at 320 px without trouble; the headless Edge `--screenshot` c
 - `main.htm`'s viewport is `width=device-width, initial-scale=1.0, maximum-scale=2.0, viewport-fit=cover`.
   Because of `viewport-fit=cover`, anything full-screen you add must pad itself with `env(safe-area-inset-*)`.
 
+### Lookups: the classic lookup dialog from the Unified Interface, PreSearch filters (2.2.18)
+
+Checked on a 9.1.34.5 org by opening the classic dialog from a Unified Interface form in a real browser.
+
+- **The classic "Look Up Record" dialog still works in a 9.1 org that runs the Unified Interface.**
+  `/<org>/_controls/lookup/lookupinfo.aspx` loads in a same-origin iframe. It has Look for, Look in, Search, Show
+  Only My Records, the view's columns, paging, and New / Add / Cancel / Remove Value. URL parameters it honours:
+  - `objecttypes` (type codes, comma-separated) and `DefaultType`;
+  - `DefaultViewId`;
+  - `LookupStyle=single|multi`;
+  - `search` (the initial quick find text);
+  - `ShowNewButton`, `ShowPropButton`, `AllowFilterOff`, `DisableQuickFind`, `DisableViewPicker`, `browse=false`.
+- **How to pass custom filters to it** (this is what the classic inline lookup sends):
+  - `customFilter` = every `<filter>` URL-encoded on its own, joined with `=`, then the whole string URL-encoded
+    again;
+  - `customFilterTypes` = the logical name for each filter, joined with `,`.
+
+  With a single URL-encoding the page throws `Type is not defined`. Setting `customFilter` on the grid after it
+  has loaded (`$find('crmGrid').SetParameter(...)` plus `Refresh()`) does nothing, because the refresh request
+  does not include that parameter. `dialogArguments.additionalFetchFilter` does not reach the request either.
+- **Getting the selection back:** the buttons call global functions in the page.
+  - **Add** calls `Mscrm.Utilities.setReturnValue(value)` and then `closeWindow()`. `value.items[]` has `id`,
+    `name`, `type` (type code), `typename` (logical name) and `values`. `name` is the primary name, so it can be
+    empty.
+  - **Remove Value** returns `{ items: [] }`.
+  - **Cancel** leaves `window.returnValue` unset.
+
+  From the parent, assign your own `closeWindow`, `executeDialogCloseCallback` and `executeDialogCancelCallback`
+  on the iframe's window once it has loaded. Read `window.returnValue` in your `closeWindow`. `createNew` can be
+  replaced the same way (for example with quick create).
+- **Remove Value is disabled** unless the page knows the field has a value. Enable `#btnRemoveValue` yourself.
+- **PreSearch runs only when the lookup searches.** That means typing, or the field's search button
+  (`button[data-id="<control>.fieldControl-LookupResultsDropdown_<field>_search"]`). Clicking into the field
+  only lists recent records, and PreSearch does not run. `addPreSearch` / `addCustomFilter` store their state in
+  the client's internal store, which you cannot read. To learn a field's current custom filters, wrap
+  `addCustomFilter` on the lookup control's prototype, then trigger a search with that button.
+- **Do not touch `Xrm.Page.ui.controls` from a timer while a form loads.** A 1.2 s poll calling
+  `Xrm.Page.ui.controls.get()` made a record fail to open with "Script Error: One of the scripts for this record
+  has caused an error", every time. The same page without the poll opened normally. Only call into `Xrm.Page`
+  when the user acts on a loaded form.
+- **DOM of the lookup dropdown.** It is drawn outside the field, under
+  `[data-id="<control>.fieldControl|__flyoutRootNode_SimpleLookupControlFlyout"]`:
+  - results: `ul[data-id$="_tab"]` > `li[data-id$="_resultsContainer"]`;
+  - the bottom row with + New and Change view: `ul[data-id$="_buttonPanelList"]`.
+
+  An empty lookup's input holds `---` as its value; don't read that as search text.
+- `Xrm.Navigation.openErrorDialog` and `openForm` return promises that settle only when the dialog or form closes.
+  A test step that awaits them never finishes, so start them from `setTimeout`.
+- **Dialog button ids** (for styling):
+  - the error dialog's OK is `button#cancelButton[data-id="errorOkButton"]`, so a rule on `#cancelButton`
+    restyles it as a secondary button;
+  - quick create Cancel is `button#quickCreateCancelBtn1[data-id="quickCreateCancelBtn"]` (numbered id).
+
 ## 29. Custom help pages in the Unified Interface help pane
 
 Verified on a 9.1.34.5 server (UCI client 1.4.x) by writing about 90 pages through the SDK and opening every
