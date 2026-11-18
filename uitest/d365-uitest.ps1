@@ -1,4 +1,4 @@
-<#
+﻿<#
   d365-uitest.ps1 - run the UI test runner against the configured org.
 
   Bridges the DPAPI-encrypted credential that d365.ps1 already caches into the Playwright runner,
@@ -20,6 +20,7 @@
 [CmdletBinding()]
 param(
   [string]$Check   = '',
+  [string]$Url     = '',   # org URL for this run only (default: the configured org)
   [string]$App     = '',
   [string]$Goto    = '',
   [string]$Out     = '',
@@ -42,7 +43,7 @@ if (-not (Test-Path (Join-Path $here 'node_modules\playwright'))) {
   throw "Playwright is not installed. Run:  cd `"$here`" ; npm install playwright"
 }
 
-$url  = (Get-Content $cfgFile -Raw -Encoding UTF8 | ConvertFrom-Json).Url
+$url  = if ($Url) { $Url.TrimEnd('/') } else { (Get-Content $cfgFile -Raw -Encoding UTF8 | ConvertFrom-Json).Url }
 $cred = Import-Clixml $credFile
 
 if (-not $Out) { $Out = Join-Path $here 'out' }
