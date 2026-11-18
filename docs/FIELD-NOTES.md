@@ -1537,3 +1537,10 @@ Met while building per-status command bar buttons that call one global action, w
   every record whose stored value fails the check impossible to save, whatever field the user changes, and the
   Unified Interface may then show "Saving in Progress". Validate on change only. Persian name checks must accept the
   zero-width non-joiner U+200C (half-space), which `[؀-ۿ]` does not contain.
+- **Removing a step from someone else's workflow:** a custom step's output (e.g. `CustomActivityStep21IsValid`) can be
+  read by a LATER condition step ("stop if not valid"). Remove the step and not its readers, and activation fails with
+  `ErrorMap Details: {ConditionStepNN: InvalidEntity ...}` - after your deactivate, so the workflow is left in DRAFT and
+  silently stops running. Remove every step that reads the removed step's variables (and their `<Variable>`
+  declarations), and always re-read `statecode` after the activate in a `finally`; never leave it unchecked.
+- **SQL deadlock (Sql Number 1205) on a metadata delete** (`DeleteAttribute`, `DeleteEntityKey`) can still have done
+  the work: re-read the metadata before retrying, and make the script idempotent (skip what is already gone).
