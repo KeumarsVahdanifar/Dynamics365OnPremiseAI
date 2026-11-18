@@ -1504,3 +1504,36 @@ from it when it saves), `p`, `strong`, `em`, `u`, `del`, `ul`/`ol`/`li`, `a href
 - Removing one: take it out of the app's components first (`RemoveAppComponents`, then publish the app), SetState
   0/1, then Delete the workflow: its type-9 form goes with it (no separate delete). Turn `IsVisibleInMobileClient`
   back off afterwards if it was switched on only for the task flow.
+
+## 33. Status buttons, status reasons and notes (9.1.34 on-prem)
+
+Met while building per-status command bar buttons that call one global action, with branched business process flows.
+
+- **A ribbon display rule has no "field is empty" test.** `ValueRule` only matches a value. Express "empty" as "none of
+  the field's values": one `<Or>` group holding a `ValueRule ... InvertResult="true"` for every option value (the rules
+  inside one `<Or>` must all hold; the groups of an `<OrRule>` are alternatives). Without it, records with an empty
+  status (older rows, a just-created child) get no button at all, and when the status column is read-only the record
+  can never get a status.
+- **Use display rules, not only enable rules, for "only in these states".** A false enable rule leaves the button
+  grayed out in the classic client; a false display rule hides it everywhere.
+- **The Unified Interface's command bar is built once per imported solution (see section 17).** One temporary solution
+  reused for several tables (components swapped between imports) lost every table but the last one, even with a
+  wait at the end; wait (about 75 s) after EACH table's import before swapping. Check with GetClientMetadata, not with
+  RetrieveEntityRibbon or the classic client.
+- **Reading RetrieveEntityRibbon XML:** `//DisplayRule[@Id='x']` first matches the reference inside the
+  `CommandDefinition` (`<DisplayRule Id="x" />`, always empty). Use `//RuleDefinitions/DisplayRules/DisplayRule[@Id='x']`.
+- **SetState to a non-default inactive status reason:** a real-time workflow that fires on the status reason can see
+  the state's DEFAULT status reason first (e.g. "paid" in the inactive state was refused by the rule written for the
+  default inactive value). Make such rules check the condition they need, not the exact value of the default.
+- **Notes on a table with notes turned off:** creating an `annotation` fails with "Creating Entity with an invalid
+  parent. Entity: Annotation, ReferencingAttribute:objectid". `HasNotes` can be turned on with `UpdateEntityRequest
+  { HasNotes = true }` but never off again. The 9.0-era SDK assemblies a workflow-step project often references have
+  no `EntityMetadata.HasNotes` (build error CS1061): keep a list of the tables that have notes, or turn notes on.
+- **Removing a status reason:** first move every record off it, then move the state's default with
+  `UpdateStateValueRequest { AttributeLogicalName = "statecode", Value = <state>, DefaultStatusCode = <other reason> }`
+  (needs the state's Label), then `DeleteOptionValueRequest` on `statuscode`, then publish the table. Regenerate any
+  business process flow or workflow condition that tested the value before deleting it.
+- **A control notification blocks saving.** `control.setNotification` on load (a validator registered on OnLoad) makes
+  every record whose stored value fails the check impossible to save, whatever field the user changes, and the
+  Unified Interface may then show "Saving in Progress". Validate on change only. Persian name checks must accept the
+  zero-width non-joiner U+200C (half-space), which `[؀-ۿ]` does not contain.
