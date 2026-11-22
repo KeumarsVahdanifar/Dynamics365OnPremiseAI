@@ -1544,3 +1544,6 @@ Met while building per-status command bar buttons that call one global action, w
   declarations), and always re-read `statecode` after the activate in a `finally`; never leave it unchecked.
 - **SQL deadlock (Sql Number 1205) on a metadata delete** (`DeleteAttribute`, `DeleteEntityKey`) can still have done
   the work: re-read the metadata before retrying, and make the script idempotent (skip what is already gone).
+- **Even with the per-table wait, an import sometimes never reaches the Unified Interface** (seen twice on 9.1.34: a
+  removed button stayed and a new one was missing in every GetClientMetadata answer while RetrieveEntityRibbon was
+  right). Probe after every ribbon import and re-import that one table (forced) when the probe disagrees.
