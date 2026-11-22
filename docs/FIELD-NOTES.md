@@ -1547,3 +1547,13 @@ Met while building per-status command bar buttons that call one global action, w
 - **Even with the per-table wait, an import sometimes never reaches the Unified Interface** (seen twice on 9.1.34: a
   removed button stayed and a new one was missing in every GetClientMetadata answer while RetrieveEntityRibbon was
   right). Probe after every ribbon import and re-import that one table (forced) when the probe disagrees.
+- **A new record's flow bar always starts on the first stage, even when its first status belongs to a later one.**
+  The Unified Interface form creates the record, then about a second later (its own request) the flow instance, on
+  the flow's first stage. A real-time "status to stage" sync on the record's create runs before that instance
+  exists, so a record whose default status maps to stage 2 (say a document created as "Received") keeps its bar on
+  stage 1. Making the instance in that sync gives the record two instances (the form still makes its own). What
+  works: a real-time workflow on the **flow table's create** that reads `bpf_<table>id` and moves the new instance
+  to the status's stage (workflows on flow tables are allowed; a stage guard that refuses user moves at depth 1
+  lets this depth-2 update through). The form then shows the moved stage right after the save. An unsaved record's
+  stage cannot be set from script, so hide the bar (`formContext.ui.process.setVisible(false)`) on the create form
+  when the status and the first stage disagree, and show it again once the saved form shows the status's stage.
