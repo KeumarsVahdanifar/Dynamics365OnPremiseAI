@@ -1364,6 +1364,33 @@ Checked on a 9.1.34.5 org by opening the classic dialog from a Unified Interface
     restyles it as a secondary button;
   - quick create Cancel is `button#quickCreateCancelBtn1[data-id="quickCreateCancelBtn"]` (numbered id).
 
+### Grids, the site map pane, theme switch animation (2.2.19)
+
+- **Grids are Wijmo FlexGrids, and their control can be reached.** Lists and read-only subgrids
+  (`[data-id^="dataSetRoot_"]`) contain `.wj-flexgrid`. In the main window `window.wijmo` exists, and
+  `wijmo.Control.getControl(host)` returns the grid. The host also carries it as `host['$WJ-CTRL']`.
+  - The grid has `rows.length`, `collectionView.items.length`, `viewRange.row` / `row2` (the rows it
+    drew), `columnHeaders.height`, and `rows[i].pos` (row offset).
+  - A read-only subgrid's box is sized by its row count: header 40 px plus 40 px per row, so 4 rows
+    give a 200 px host.
+  - Wijmo draws only the rows inside the height it measured when it last rendered. If the box grows
+    later and nothing tells the grid, the rows below stay undrawn until the grid's Refresh.
+  - `grid.refresh(true)` redraws from the same data, without a server call. Detect the problem with
+    `rows[viewRange.row2 + 1].pos < scrollTop + clientHeight - header`.
+- **Site map pane DOM:** `nav[data-id="navbar-container"]` has three children:
+  - the top row (hamburger);
+  - `div#siteMapPanelBodyDiv`, the scrolling list;
+  - the area switcher, about 43 px.
+
+  An element inserted after `#siteMapPanelBodyDiv` sits pinned above the area switcher and survives
+  navigation. The pane is about 200 px wide, and narrower when collapsed.
+- **Theme switch with `document.startViewTransition` (Chrome/Edge):**
+  - Starting a second transition skips the first, and the first one's `finished` promise then
+    resolves. A cleanup on that promise (for example removing the class that turns the reveal
+    animation on) must check that it belongs to the current transition, or it cuts the second one off.
+  - Turn CSS transitions off inside the update callback (a class added there, removed on
+    `finished`). Otherwise the live new view shows colours part-way through their transitions.
+
 ## 29. Custom help pages in the Unified Interface help pane
 
 Verified on a 9.1.34.5 server (UCI client 1.4.x) by writing about 90 pages through the SDK and opening every

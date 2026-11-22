@@ -5,6 +5,17 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.19
+
+### Documentation
+
+- [FIELD-NOTES §28](docs/FIELD-NOTES.md) "Grids, the site map pane, theme switch animation":
+  - reaching the Wijmo grid behind lists and subgrids, and what it drew (viewRange);
+  - redrawing without a fetch;
+  - how a subgrid sizes its box;
+  - the site map pane children;
+  - the startViewTransition skip and cleanup race, and capturing the new view without CSS transitions.
+
 ## 2.2.18
 
 ### Documentation
