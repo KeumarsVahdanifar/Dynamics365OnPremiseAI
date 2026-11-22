@@ -5,6 +5,12 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.20
+
+### Documentation
+
+- [FIELD-NOTES §28](docs/FIELD-NOTES.md): walking stylesheets in current browsers. Every style rule has an empty nested `cssRules` list, so check `type === 1` first.
+
 ## 2.2.19
 
 ### Documentation

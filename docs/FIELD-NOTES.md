@@ -1390,6 +1390,10 @@ Checked on a 9.1.34.5 org by opening the classic dialog from a Unified Interface
     animation on) must check that it belongs to the current transition, or it cuts the second one off.
   - Turn CSS transitions off inside the update callback (a class added there, removed on
     `finished`). Otherwise the live new view shows colours part-way through their transitions.
+- **Walking stylesheets:** in current Chrome and Edge every `CSSStyleRule` also has a `cssRules` list
+  (CSS nesting), and it is empty for the client's CSS. Code that first checks `if (rule.cssRules) recurse`
+  never reads any style rule. Check `rule.type === 1 && rule.style` first, then recurse into a non-empty
+  `cssRules`. Counted on 9.1 UCI: about 1,150 colour declarations in 19 sheets (Styles.css + Fela `<style>`s).
 
 ## 29. Custom help pages in the Unified Interface help pane
 
