@@ -5,6 +5,12 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.22
+
+### Documentation
+
+- [FIELD-NOTES §28](docs/FIELD-NOTES.md): main.aspx rejects unknown query parameters (use `#`), and the classic web client deep link (`forceClassic=1`, no `appid`).
+
 ## 2.2.21
 
 ### Documentation

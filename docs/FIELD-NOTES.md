@@ -1390,6 +1390,13 @@ Checked on a 9.1.34.5 org by opening the classic dialog from a Unified Interface
     animation on) must check that it belongs to the current transition, or it cuts the second one off.
   - Turn CSS transitions off inside the update callback (a class added there, removed on
     `finished`). Otherwise the live new view shows colours part-way through their transitions.
+- **main.aspx rejects unknown query parameters.** CRM's parameter filter answers `main.aspx?…&anything=x`
+  with an error page ("CRM Parameter Filter - Invalid parameter"). Pass your own switches after `#`: the
+  server never sees the fragment, and a script in the page can read `location.hash`.
+- **The same page in the classic web client:** take the Unified Interface deep link, drop `appid`, and add
+  `forceClassic=1`. That is `main.aspx?forceClassic=1&etn=…&pagetype=entityrecord&id=…`, or
+  `pagetype=entitylist&viewid=…&viewType=1039`, or `pagetype=dashboard`. Verified on 9.1 for a record form,
+  a list view and the dashboards.
 - **Reduced motion on user machines:** with Windows Settings > Accessibility > Visual effects >
   Animation effects off (often the case over Remote Desktop and on virtual machines), Chrome and Edge report
   `prefers-reduced-motion: reduce`. A test browser does not, so animations that honour it look fine in tests
