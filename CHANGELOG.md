@@ -5,6 +5,12 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.23
+
+### Documentation
+
+- [FIELD-NOTES §27](docs/FIELD-NOTES.md): switching a UserLocal date column to DateOnly, converting the stored values with ConvertDateAndTimeBehavior (SpecificTimeZone), and publishing the table before the job (an unpublished change converts nothing).
+
 ## 2.2.22
 
 ### Documentation

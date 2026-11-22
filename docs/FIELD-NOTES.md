@@ -1074,6 +1074,29 @@ This query shows the pairs:
   a range. Convert the UserLocal value to the organization's time zone first
   (`TimeZoneInfo.ConvertTimeFromUtc(value, zone).Date`); the same conversion leaves a DateOnly midnight on its
   own day in such a zone, so one rule reads both.
+- **Switching a UserLocal column to DateOnly (one way only).** `UpdateAttributeRequest` with
+  `DateTimeBehavior = DateOnly` (the column's `CanChangeDateTimeBehavior` must be true; CRM never lets it go
+  back). The rows keep their stored UTC instant and a DateOnly read shows its UTC date, so a date typed as
+  00:00 in a zone east of UTC shows **one day early** until the values are converted. Convert them with CRM's
+  own job, which writes the table directly (no plugins or workflows fire):
+
+  ```powershell
+  # all three types are in Microsoft.Xrm.Sdk.dll (not Microsoft.Crm.Sdk.Proxy)
+  $req  = New-Object Microsoft.Xrm.Sdk.Messages.ConvertDateAndTimeBehaviorRequest
+  $cols = New-Object System.Collections.Specialized.StringCollection
+  [void]$cols.Add('abc_startdate'); [void]$cols.Add('abc_enddate')
+  $req.Attributes = New-Object Microsoft.Xrm.Sdk.EntityAttributeCollection
+  $req.Attributes.Add('abc_contract', $cols)
+  $req.ConversionRule = [Microsoft.Xrm.Sdk.DateTimeBehaviorConversionRule]::SpecificTimeZone.Value
+  $req.TimeZoneCode = 160          # timezonedefinition.timezonecode; standardname 'Iran Standard Time' = 160
+  $req.AutoConvert = $false
+  $jobId = $svc.Execute($req).JobId   # asyncoperation; done = statecode 3, statuscode 30 "Date Only Conversion Summary"
+  ```
+
+  **Publish the table first** (`PublishXmlRequest` for that entity). Seen on 9.1.34.5: a job started while the
+  new behaviour was still unpublished finished as Succeeded and converted nothing; after the publish the same
+  request converted every value. Running it twice is harmless (a midnight value stays on its day). Back the
+  values up first and check each one against its old day in that zone afterwards.
 
 ---
 
