@@ -1390,6 +1390,10 @@ Checked on a 9.1.34.5 org by opening the classic dialog from a Unified Interface
     animation on) must check that it belongs to the current transition, or it cuts the second one off.
   - Turn CSS transitions off inside the update callback (a class added there, removed on
     `finished`). Otherwise the live new view shows colours part-way through their transitions.
+- **Reduced motion on user machines:** with Windows Settings > Accessibility > Visual effects >
+  Animation effects off (often the case over Remote Desktop and on virtual machines), Chrome and Edge report
+  `prefers-reduced-motion: reduce`. A test browser does not, so animations that honour it look fine in tests
+  and are missing for that user. Playwright reproduces it with `reducedMotion: 'reduce'` on the context.
 - **Walking stylesheets:** in current Chrome and Edge every `CSSStyleRule` also has a `cssRules` list
   (CSS nesting), and it is empty for the client's CSS. Code that first checks `if (rule.cssRules) recurse`
   never reads any style rule. Check `rule.type === 1 && rule.style` first, then recurse into a non-empty

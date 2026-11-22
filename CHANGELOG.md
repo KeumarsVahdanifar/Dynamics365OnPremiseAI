@@ -5,6 +5,12 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.21
+
+### Documentation
+
+- [FIELD-NOTES §28](docs/FIELD-NOTES.md): reduced motion. Windows Animation effects off (Remote Desktop, virtual machines) means `prefers-reduced-motion: reduce` for that user but not in test browsers.
+
 ## 2.2.20
 
 ### Documentation
