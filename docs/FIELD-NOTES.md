@@ -1670,3 +1670,23 @@ Met while building per-status command bar buttons that call one global action, w
   lets this depth-2 update through). The form then shows the moved stage right after the save. An unsaved record's
   stage cannot be set from script, so hide the bar (`formContext.ui.process.setVisible(false)`) on the create form
   when the status and the first stage disagree, and show it again once the saved form shows the status's stage.
+
+## 34. Opening a quick create from script with values filled in (9.1.34 on-prem)
+
+Met while adding a "record a payment" button that opens a child table's quick create form for the current record.
+
+- **`createFromEntity` drops the other form parameters.** `Xrm.Navigation.openForm({ entityName: "abc_child",
+  useQuickCreateForm: true, createFromEntity: { entityType: "abc_parent", id, name } }, { abc_amount: 100 })` filled
+  the parent lookup but left `abc_amount` empty. Pass the lookup as form parameters instead, as three keys:
+  `{ abc_parentid: "<guid>", abc_parentidname: "<name>", abc_parentidtype: "abc_parent", abc_amount: 100 }`. Then
+  every value arrives.
+- **A date-only column takes `"YYYY-MM-DD"`** as a form parameter (`{ abc_paidon: "2026-11-23" }` saved that day).
+- **Don't pass the currency as a form parameter.** `transactioncurrencyid` / `...name` / `...type` set the currency
+  lookup, but the money fields kept the symbol of the user's default currency ("$ 1,000,000" next to a currency
+  field showing another currency). Set the currency in the form's OnLoad with `getAttribute("transactioncurrencyid")
+  .setValue([...])` instead: the money fields are then drawn in that currency's symbol.
+- **An input's value is not in `innerText`.** A UI test that reads the quick create flyout's text sees lookups (they
+  are links) but not the numbers typed or passed into inputs; read `input.value`, or take a screenshot.
+- The quick create's save returns before the flyout closes only through the `openForm` promise: start `openForm` without
+  awaiting it, click `[data-id="quickCreateSaveAndCloseBtn"]`, then await the promise. It resolves to
+  `{ savedEntityReference: [{ id, entityType, name }] }`, and real-time workflows on the child's create have finished by then.
