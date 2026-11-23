@@ -1443,6 +1443,40 @@ Checked on a 9.1.34.5 org by opening the classic dialog from a Unified Interface
   brand in this button must hide the span's child elements, or the theme logo shows through. Checked on two
   9.1 orgs, one with a theme logo and one without.
 
+### Classic pages in Chrome 158: XSLT is gone (checked 2026-11-23)
+
+- **Symptom:** Advanced Find, opened from the Unified Interface or the classic web client, shows an empty
+  ribbon band, and a condition row's field list (fields + related tables) is never built. No script error is
+  reported. Results still run if you get to them.
+- **Cause:**
+  - Chrome 158.0.8127.37 has no `window.XSLTProcessor`; Edge 158.0.4370.33 still had it on the same day.
+  - The classic `Mscrm.XslTemplate` (global.ashx) falls back to Internet Explorer's ActiveX XSLT when
+    XSLTProcessor is missing. That fails, and Advanced Find's setup stops before the ribbon is drawn.
+  - Launching the same Chrome with `--enable-blink-features=XSLT` brings everything back. Re-enabling `unload`
+    (`--disable-features=DeprecateUnload`) or mutation events does not.
+  - The "Permissions policy violation: unload is not allowed" console errors on classic pages are noise.
+- **Where XSLT is used on a 9.1 server** (outside `uclient`, which has none):
+  - `_grid/cmds/dlg_share.aspx`, `dlg_role.aspx`;
+  - `AdvancedFind/CacheManager.js`, `_controls/EntitySelect`, `Reports`, `AppNav/CrmNavBar.js`;
+  - `Tools/FormEditor`, `ViewEditor` and `DashboardEditor` scripts;
+  - `SFA/workflow/fetchquery.aspx`, `PromptResponse.aspx`, Help.
+- **Admin policy:** Chrome and Edge 158 binaries contain the policy names `XSLTEnabled` and
+  `XSLTDeprecationBannerSuppressed`. The policy keeps the browser's own XSLT without touching the server.
+- **Server-side fix:**
+  - Google's [xslt-polyfill](https://github.com/mfreed7/xslt_polyfill) (npm, BSD-3-Clause, libxslt in WebAssembly)
+    gives back a synchronous `XSLTProcessor`. It is usable by the very next `<script>` after it loads, and CRM
+    only needs `importStylesheet`, `setParameter` and `transformToFragment`.
+  - Differences from the browser's own processor (polyfill 1.0.34):
+    - `method="xml"` output is put in the XHTML namespace, with lowercased attribute names, on HTML pages;
+    - stylesheets with no output method aren't given the HTML method on HTML pages, as Chrome did;
+    - a failed transform throws (Chrome returned `null`);
+    - `version="2.0"` stylesheets (CRM's) print libxslt warnings to the console.
+  - All four can be smoothed over in a small wrapper plus a two-token patch.
+- **Delivering it:** classic `_static` scripts and `global.ashx` are served with a one-year cache
+  (`max-age=31536000`, or `Expires` + 1 year). Their `ver=` key changes only with a CRM update, so an edited
+  script never reaches browsers that already cached it. The `.aspx` pages are not cached: a script line has to
+  go into the pages (edited files, or an IIS URL Rewrite outbound rule).
+
 ## 29. Custom help pages in the Unified Interface help pane
 
 Verified on a 9.1.34.5 server (UCI client 1.4.x) by writing about 90 pages through the SDK and opening every
