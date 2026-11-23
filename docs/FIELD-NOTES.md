@@ -765,13 +765,21 @@ section 4).
 Adding a form library also fails until the web resource exists - *"The dependent component ... does
 not exist"*. Upload and publish web resources **first**, then reference them from `formxml`.
 
-**The Quick Find view of a newly created table refuses every update.** On a table created through the
-SDK, `Update` of its `querytype` 4 `savedquery` failed with `0x80040216` *"An unexpected error
-occurred"*: with new XML, with the unchanged XML it already had, and after publishing the table. The
-table's five other generated views updated fine. Renaming it with `SetLocLabelsRequest` on `name`
-worked, so keep its generated definition and set only the name. The generated Lookup view
-(`querytype` 64) uses `<grid name="<plural>" ... preview="0"><row name="<table>" ...>` instead of
-`resultset` / `result`; keep those names when you rewrite its `layoutxml`.
+**The Quick Find view of a newly created table refuses any change to its `fetchxml`.** On a table created
+through the SDK, an `Update` of its `querytype` 4 `savedquery` that carries `fetchxml` fails with
+`0x80040216` *"An unexpected error occurred"*. It fails with new XML, with the unchanged XML it already had,
+and after publishing the table. An `Update` that sends **only `layoutxml`** works, so you can change its
+columns, but its find columns (the `isquickfindfields` filter) stay the generated ones. Renaming it with
+`SetLocLabelsRequest` on `name` also works. The table's other generated views update normally. The
+generated Lookup view (`querytype` 64) uses `<grid name="<table>s" ... preview="0"><row name="<table>" ...>`
+instead of `resultset` / `result`; keep those names when you rewrite its `layoutxml`.
+
+**Moving the default public view: setting `isdefault` does not clear the old one.** An `Update` of a
+`querytype` 0 `savedquery` with `isdefault = true` succeeds, but the previous default keeps
+`isdefault = true` as well. Seen on eight tables in a row, so the table ends up with two defaults. Clear the
+old one with a second `Update` (`isdefault = false`), then publish the table. If your app module lists
+views and you take the old default out of it, a form subgrid that still points at that view makes
+`ValidateApp` ask for the view again, so repoint the subgrid first.
 
 ## 21. Persian / non-ASCII labels: it works, and how to be sure
 
