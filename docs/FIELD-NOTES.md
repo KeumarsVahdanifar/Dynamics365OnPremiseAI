@@ -1436,6 +1436,12 @@ Checked on a 9.1.34.5 org by opening the classic dialog from a Unified Interface
   (CSS nesting), and it is empty for the client's CSS. Code that first checks `if (rule.cssRules) recurse`
   never reads any style rule. Check `rule.type === 1 && rule.style` first, then recurse into a non-empty
   `cssRules`. Counted on 9.1 UCI: about 1,150 colour declarations in 19 sheets (Styles.css + Fela `<style>`s).
+- **The org theme's logo in the top bar:** a logo set in the organisation theme (Settings > Customizations >
+  Themes) is an `<img>` inside `button[data-id="dynamics-button"] > span`, with the logo web resource's URL as
+  `src` and the theme's tooltip as `alt`/`title` (about 139×48 at 1600 px wide). The same button is on the
+  apps page. Without a theme logo, that span holds only the text "Dynamics 365". A shell that draws its own
+  brand in this button must hide the span's child elements, or the theme logo shows through. Checked on two
+  9.1 orgs, one with a theme logo and one without.
 
 ## 29. Custom help pages in the Unified Interface help pane
 
