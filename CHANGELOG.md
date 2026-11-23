@@ -5,6 +5,30 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.27
+
+### Documentation
+
+- [FIELD-NOTES §34](docs/FIELD-NOTES.md): opening a quick create from script with values: createFromEntity drops the other form parameters (pass the lookup as three keys), a date-only parameter takes YYYY-MM-DD, a currency parameter leaves money fields in the user's currency symbol (set it in OnLoad), and how a UI test saves a quick create.
+
+## 2.2.26
+
+### Documentation
+
+- [FIELD-NOTES](docs/FIELD-NOTES.md): classic pages in Chrome 158 (XSLT removed).
+
+## 2.2.25
+
+### Documentation
+
+- [FIELD-NOTES](docs/FIELD-NOTES.md): the org theme logo in the Unified Interface top bar.
+
+## 2.2.24
+
+### Documentation
+
+- [FIELD-NOTES §20](docs/FIELD-NOTES.md) (views): a Quick Find view of an SDK-made table takes a layoutxml-only update (only fetchxml is refused, corrected from "every update"); setting a view isdefault leaves the old default set too, so clear it by hand; the generated Lookup grid is named <table>s.
+
 ## 2.2.23
 
 ### Documentation
