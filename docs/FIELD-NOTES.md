@@ -1690,3 +1690,25 @@ Met while adding a "record a payment" button that opens a child table's quick cr
 - The quick create's save returns before the flyout closes only through the `openForm` promise: start `openForm` without
   awaiting it, click `[data-id="quickCreateSaveAndCloseBtn"]`, then await the promise. It resolves to
   `{ savedEntityReference: [{ id, entityType, name }] }`, and real-time workflows on the child's create have finished by then.
+
+## 35. Giving a new user access through teams, and checking it without their password (9.1.34 on-prem)
+
+Verified 2026-11-24 by creating a user and checking what they could do through impersonation.
+
+- **Creating the user:** `create systemuser` with `domainname` (`DOMAIN\account`, as in Active Directory), `firstname`,
+  `lastname`, `internalemailaddress` and `businessunitid` works through the SDK when the account exists in AD. Take the
+  names from AD (`[adsisearcher]"(sAMAccountName=…)"` on a domain PC) rather than typing them. A user can't be
+  deleted afterwards, only disabled.
+- **The backslash in `domainname`** must reach the JSON doubled (`"DOMAIN\account"`). A Bash heredoc and the shell
+  hops collapse it: write the `-Data '@file.json'` file with an editor or a tool that keeps `\`, and check the bytes.
+- **Roles that come only from owner-team membership open model-driven apps.** A user with no role on the app, but a
+  member of teams whose roles are on the app (`appmoduleroles`), gets the app. Membership is
+  `associate team <teamId> teammembership_association systemuser <userId>`.
+- **Checking a user's access without their password:** set `CallerId` on the `CrmServiceClient` (an admin can act as
+  another user) and read as them:
+  - `RetrieveMultiple` on `appmodule` returns only the apps that user may open (here 4 against an admin's 16);
+  - table reads and field-security values (a secured column comes back only if a profile allows it) reflect their roles.
+
+  `WhoAmI` under `CallerId` still answered with the admin's id here, because the client caches its first answer.
+  Judge the impersonation by the results that differ, such as the app list.
+- `RetrieveUserPrivileges` counts the privileges from the user's own roles and those of their teams together.
