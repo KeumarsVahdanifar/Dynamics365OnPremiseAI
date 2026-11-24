@@ -1699,8 +1699,9 @@ Verified 2026-11-24 by creating a user and checking what they could do through i
   `lastname`, `internalemailaddress` and `businessunitid` works through the SDK when the account exists in AD. Take the
   names from AD (`[adsisearcher]"(sAMAccountName=…)"` on a domain PC) rather than typing them. A user can't be
   deleted afterwards, only disabled.
-- **The backslash in `domainname`** must reach the JSON doubled (`"DOMAIN\account"`). A Bash heredoc and the shell
-  hops collapse it: write the `-Data '@file.json'` file with an editor or a tool that keeps `\`, and check the bytes.
+- **The backslash in `domainname`** must reach the JSON doubled (`"DOMAIN\\account"`). A Bash heredoc and the shell
+  hops collapse it: write the `-Data '@file.json'` file with an editor or a tool that keeps `\\`, and check the bytes
+  (`od -c`).
 - **Roles that come only from owner-team membership open model-driven apps.** A user with no role on the app, but a
   member of teams whose roles are on the app (`appmoduleroles`), gets the app. Membership is
   `associate team <teamId> teammembership_association systemuser <userId>`.
