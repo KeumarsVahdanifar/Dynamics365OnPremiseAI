@@ -5,6 +5,12 @@ behaviour change or new command gets a line here so people who already have a co
 
 Versions match `.claude-plugin/plugin.json`.
 
+## 2.2.29
+
+### Documentation
+
+- [FIELD-NOTES §36](docs/FIELD-NOTES.md): new columns on a multi-server farm: a create can succeed while a connection's metadata cache keeps saying the column does not exist (treat 0x80047013 as exists, re-check with a fresh connection), a key on the new column in a later step, columns of a table that is in a solution with all subcomponents need no component row.
+
 ## 2.2.27
 
 ### Documentation

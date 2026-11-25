@@ -1713,3 +1713,25 @@ Verified 2026-11-24 by creating a user and checking what they could do through i
   `WhoAmI` under `CallerId` still answered with the admin's id here, because the client caches its first answer.
   Judge the impersonation by the results that differ, such as the app list.
 - `RetrieveUserPrivileges` counts the privileges from the user's own roles and those of their teams together.
+
+## 36. New columns and a stale metadata cache on a multi-server farm (9.1.34 on-prem)
+
+Seen 2026-11-25 while adding columns to two existing custom tables with `CreateAttributeRequest` (three front-end
+servers behind one URL).
+
+- **A create can succeed and the column still be invisible for a long time.** Right after `CreateAttributeRequest`
+  returned, `RetrieveEntity` / `RetrieveAttribute` (with or without `RetrieveAsIfPublished`) said the column did
+  not exist. New connections saw it after a few minutes; one long-running script's connection still did not see it
+  more than 15 minutes later, while CRM refused to create it again ("An attribute with the specified name … already
+  exists", 0x80047013). The create checks the database; the reads come from the answering server's metadata cache.
+- **So a re-runnable schema script must not trust "not found" alone.** Treat 0x80047013 on create as "exists" and go
+  on; re-check with a fresh connection (a new `CrmServiceClient` with `RequireNewInstance=true`) before deciding a
+  column is missing; and expect a compare step to report a just-created column as missing for a while.
+- **A key on the new column** (`CreateEntityKeyRequest`) needs the column to be visible to the server that takes the
+  request; create it in a later step. Its index builds in a system job: `EntityKeyIndexStatus` went Pending → Active
+  in about 1.5 minutes on a table with a few hundred rows where the new column was empty everywhere (null values do
+  not collide).
+- **Columns added to a custom table that is in a solution with all its subcomponents** need no separate
+  `AddSolutionComponent`: no `solutioncomponent` row of type 2 appears for them, and they still export with the
+  table. Columns added to a table that is in the solution without subcomponents do need their own row.
+- No publish is needed to read and write a new column through the SDK; only forms, views and the UI need one.
